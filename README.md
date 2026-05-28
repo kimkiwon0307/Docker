@@ -79,8 +79,86 @@
 
 ---
 
+## 3장 도커 설치 및 첫 실습
 
+### 📋 3.1 사전 준비 사항
+도커를 안전하게 설치하고 운용하기 위해, 본격적인 설치 전 아래 6가지 요구사항을 체크합니다.
 
+1. **Ubuntu 버전 확인 :** 도커는 최신 리눅스 커널 환경에서 가장 안정적입니다. (우분투 LTS 버전 권장)
+   * 확인 명령어: cat /etc/os-release
+
+2. **sudo 권한 확인 :** 패키지 제어 및 가상 네트워크 장치 생성을 위해 관리자(root) 권한이 반드시 필요합니다.
+   * 확인 명령어: sudo whoami (결과가 root로 나와야 합니다.)
+
+3. **인터넷 연결 상태 :** Docker 공식 APT 저장소로부터 대용량 패키지를 다운로드해야 하므로 외부 인터넷망 연결이 필수적입니다.
+
+4. **디스크 여유 공간 :** 도커 이미지, 컨테이너 레이어, 볼륨 데이터가 지속적으로 쌓이므로 루트 패치에 최소 수 GB 이상의 디스크 용량을 확보해야 합니다.
+
+5. **메모리 제원 :** 다중 컨테이너 및 고부하 애플리케이션(DB, 웹 서버 등)의 원활한 병렬 구동을 위해 최소 **8GB 이상**의 RAM 시스템 환경을 권장합니다.
+
+6. **CPU 가상화 활성화 :** 호스트 운영체제(OS) 수준에서 컨테이너 프로세스를 효율적으로 격리·구동할 수 있도록 CPU 가상화 기능(Intel VT-x / AMD-V)이 켜져 있어야 합니다.
+
+### 🛠️ 3.2 도커 설치
+리눅스는 가상 OS를 거치지 않고 Docker가 호스트 커널을 직접 사용할 수 있으므로, Ubuntu 환경에서는 가벼운 'Docker Engine'만 설치하여 사용하는 것이 일반적입니다.
+
+1. **패키지 목록 업데이트 :** sudo apt update
+2. **기존 구버전 Docker 제거 :** sudo apt remove docker docker-engine docker.io containerd runc
+   * 구버전 패키지가 남아있으면 설치 충돌이 발생할 수 있으므로 사전에 정리합니다.
+3. **필수 패키지 설치 :** sudo apt install -y ca-certificates curl gnupg
+   * Docker 저장소의 보안 인증 및 암호화 키를 다루기 위한 필수 도구입니다.
+4. **Docker GPG Key 등록 :** * sudo install -m 0755 -d /etc/apt/keyrings
+   * curl -fsSL [https://download.docker.com/linux/ubuntu/gpg](https://download.docker.com/linux/ubuntu/gpg) | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+   * sudo chmod a+r /etc/apt/keyrings/docker.gpg
+   * 💡 GPG Key란? 패키지 위변조를 방지하기 위해 진짜 Docker 공식 저장소에서 제공하는 안전한 패키지가 맞는지 검증하는 인증서입니다.
+5. **Docker Repository 등록 :** * echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] [https://download.docker.com/linux/ubuntu](https://download.docker.com/linux/ubuntu) $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   * 💡 Repository 등록이란? Ubuntu 시스템의 패키지 매니저(apt)에게 "앞으로 소프트웨어를 다운로드할 때 Docker 공식 저장소 경로도 함께 조회해라"라고 등록해 주는 과정입니다.
+6. **패키지 목록 갱신 :** sudo apt update
+   * 새로 등록한 Docker 저장소의 최신 패키지 정보를 시스템에 반영합니다.
+7. **Docker 엔진종류 최종 설치 :** sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+📑 설치되는 핵심 구성 요소 역할:
+* **docker-ce :** 도커 엔진 (실제 컨테이너를 구동하고 백그라운드에서 관리하는 핵심 데몬)
+* **docker-ce-cli :** 도커 명령어 도구 (사용자가 터미널 창에 명령어를 입력할 수 있게 해주는 인터페이스)
+* **containerd.io :** 컨테이너 런타임 (리눅스 커널 기능을 직접 활용해 프로세스를 격리하는 실구동부)
+* **buildx-plugin :** 고급 빌드 기능 (다양한 CPU 아키텍처 환경에 맞춰 이미지를 빌드하는 확장 도구)
+* **compose-plugin :** Docker Compose 기능 (여러 개의 컨테이너 환경을 하나의 파일로 묶어 일괄 제어)
+
+8. **설치 상태 최종 확인 :** docker version
+   * 🚨 permission denied 에러 발생 시 해결법: Docker 데몬은 기본적으로 관리자(root) 권한으로 구동되므로 일반 계정에서는 소켓 접근 권한이 거부됩니다. 현재 사용자를 docker 그룹에 영구 추가하여 해결합니다.
+   * 해결 방법: sudo usermod -aG docker $USER 입력 후, 'newgrp docker'를 입력하거나 세션을 재접속합니다.
+   * 최종 검증: 'docker ps'로 정상 작동을 확인하고, 'systemctl status docker'로 서비스 구동 상태를 체크합니다.
+
+---
+
+### 🚀 3.3 Hello-World 및 Nginx 첫 실습
+도커가 정상적으로 설치되었다면 기본 이미지들을 활용해 컨테이너의 핵심 작동 원리를 파악합니다.
+
+#### 🧪 3.3.1 hello-world 실행 시 내부 작동 메커니즘
+* 실행 명령어: docker run hello-world
+
+도커는 철저히 이미지 기반으로 동작하며, run 명령 한 번에 pull(다운로드), create(생성), start(실행) 과정이 모두 포함되어 있습니다. 내부적으로는 아래 7단계의 순서대로 일어납니다.
+1. **로컬 창고 수색 :** 내 컴퓨터(로컬) 환경에 hello-world 이미지가 이미 다운로드되어 있는지 확인합니다.
+2. **원격 저장소 접속 :** 로컬에 파일이 없다면 인터넷망을 통해 글로벌 공용 저장소인 도커 허브(Docker Hub)에 접속합니다.
+3. **이미지 다운로드 (Pull) :** 도커 허브로부터 최신 hello-world 이미지를 안전하게 다운로드합니다.
+4. **컨테이너 공간 생성 (Create) :** 다운로드한 정적 이미지를 바탕으로 독립된 격리 샌드박스 공간을 개설합니다.
+5. **프로세스 실행 (Start) :** 컨테이너 내부의 메인 애플리케이션 프로세스를 가동합니다.
+6. **메시지 출력 :** 화면에 환영 문구(Hello from Docker!)를 출력합니다.
+7. **프로세스 및 컨테이너 종료 :** 텍스트 출력이 완료되어 내부 메인 프로세스가 끝나면, 컨테이너도 자원을 반납하며 그 즉시 자동 종료(Exited) 상태로 전환됩니다.
+
+📌 컨테이너 생명주기 확인 가이드:
+* 컨테이너는 내부에 켜진 메인 프로세스가 죽으면 가동을 멈춥니다.
+* 현재 실행 중인 실시간 컨테이너 확인: docker ps
+* 가동이 끝나고 종료된 컨테이너까지 전체 내역 확인: docker ps -a
+
+#### 🌐 3.3.2 nginx 웹 서버 실시간 백그라운드 가동 실습
+웹 서버처럼 종료되지 않고 상시 켜져서 외부 트래픽을 대기해야 하는 서비스는 아래 옵션을 조합하여 실행합니다.
+
+* 실행 명령어: docker run -d -p 80:80 --name my-web nginx
+
+💡 핵심 실행 옵션 상세 분석:
+* **-d (Detached 모드) :** 컨테이너를 백그라운드(화면 뒤편)에서 조용히 실행하도록 만듭니다. 이 옵션이 있어야 웹 서버가 켜진 상태에서도 터미널 창이 먹통이 되지 않고 다음 명령어를 연속해서 입력할 수 있습니다.
+* **-p 80:80 (포트 포워딩) :** 외부 호스트의 포트와 컨테이너 내부의 전용 포트를 1:1로 단단히 연결합니다. 외부 사용자가 내 서버 IP의 80번 포트로 접속하면, 도커 엔진이 컨테이너 내부 샌드박스의 80번 포트로 트래픽을 안전하게 중계(릴레이)해 줍니다.
+* **nginx :** 웹 서버 구동을 위해 도커 허브로부터 불러올 표준 웹 서버 베이스 이미지 명칭입니다.
 
 
 
