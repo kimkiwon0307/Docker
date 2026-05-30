@@ -229,76 +229,107 @@
 ##### 📊 이미지 다운로드 내부 동작 흐름
 사용자가 터미널에 다운로드 명령을 내린 후, 로컬 PC에 저장되기까지의 전체 흐름도입니다.
 
-```mermaid
-graph LR
-    A["1. 사용자가 명령어 입력<br>(docker pull nginx)"] --> B{2. 로컬에 이미지 존재 여부 확인}
-    B -- "이미 있음 (종료)" --> E["최신 상태 유지"]
-    B -- "이미지 없음" --> C["3. 외부 도커 허브(Docker Hub)<br>중앙 저장소 접속"]
-    C --> D["4. nginx 이미지 레이어<br>다운로드 진행"]
-    D --> F["5. 로컬 PC 저장소<br>(Local Registry) 저장 완료"]
+### 4.2 도커 기초 명령어
 
-    %% 스타일링
-    style A fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
-    style C fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style F fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+#### 4.2.1 도커 이미지 다운로드
+> 💡 **이미지(Image)란?** 컨테이너를 생성하기 위한 독립된 **'설계도'**입니다.
 
-  4.2.2 도커 이미지 상세 구조
-    nginx 이미지는 무엇으로 구성될까? : 실제로는 Linux OS 일부 + nginx 프로그램 + 라이브러리 + 설정 파일이다.
-    이미지 레어 구조
-      Docker 이미지 특징
-        Layer 구조. ex) Ubuntu Base -> nginx 설치 -> 설정 추가. 레이어가 쌓임. 확인 : docker history nginx
-    왜 중요할까? 이미지를 재사용 가능하다. Ubuntu 기반 이비지 100개이면 Ubuntu 부분은 공유해서 용량을 절약한다.
+* **Nginx 이미지 다운로드 명령어:** `docker pull nginx`
+* **다운로드 완료 확인 명령어:** `docker images`
 
-  4.2.3 도커 이미지 목록 확인
-    명령어 : docker images, docker image ls : 현재 PC에 저장된 이미지 목록
+* **⚙️ 이미지 다운로드 내부 동작 흐름**
+  사용자 명령어 입력 (`docker pull nginx`) ──> 외부 도커 허브(`Docker Hub`) 접속 ──> nginx 이미지 다운로드 ──> 로컬 PC 저장소(`Local Registry`) 저장 완료
 
-  4.2.4 도커 컨테이너 실행
-    기본 실행 : docker run nginx
-    실행 순서 : 이미지 확인 -> 컨테이너 생성 -> nginx 실행
-    백그라운드 실행 : docker run -d nginx : -d는 detached mode 
-    포트 연결 : docker run -d -p 80:80 nginx : 호스트 80 <-> 컨테이너 80 
-    이름 지정 : docker run -d --name my-nginx nginx 
+#### 4.2.2 도커 이미지 상세 구조
+* **Nginx 이미지는 무엇으로 구성될까?**
+  * 실제로는 **Linux OS 일부 + nginx 프로그램 + 라이브러리 + 설정 파일**이 합쳐진 파일입니다.
 
-  4.2.5 도커 컨테이너 목록 확인
-    실행 중인 컨테이너 : docker ps
-    종료 포함 전체 보기 : docker ps -a
+* **🧱 도커 이미지의 핵심: 레이어(Layer) 구조**
+  * 도커 이미지는 한 번에 만들어지는 것이 아니라 설계 단계가 차곡차곡 쌓이는 **Layer 구조**를 가집니다.
+  * *예시: Ubuntu 베이스 다운로드 ──> nginx 프로그램 설치 ──> 환경 설정 추가*
+  * **레이어 확인 명령어:** `docker history nginx`
 
-  4.2.6 컨테이너 내부 접속
-    docker exec -it my-nginx bash : exec 의미는 컨테이너 내부 명령 실행
-    파일 확인 : ls
-    프로세스 확인 : ps -ef
-    종료 : exit
-    bash 없을 경우 : docker exec -it 컨테이너명 sh
+* **❓ 레이어 구조가 왜 중요할까? (이미지 재사용)**
+  * 동일한 베이스를 가진 이미지는 해당 레이어를 **공유**합니다. 예를 들어 Ubuntu 기반 이미지 100개가 있더라도 로컬 PC에는 Ubuntu 레이어가 단 1개만 저장되므로 전체 용량을 획기적으로 절약할 수 있습니다.
 
-  4.2.7 컨테이너 삭제
-    중지 : docker stop my-nginx
-    삭제 : docker rm my-nginx
-    한번에 : docker rm -f my-nginx
+---
 
-  4.2.8 이미지 삭제
-    목록 확인 : docker images
-    삭제 : docker rmi nginx 또는 docker images rm nginx : 컨테이너가 사용중이면 삭제 불가
+#### 4.2.3 도커 이미지 목록 확인
+* **기능:** 현재 내 PC(호스트) 저장소에 다운로드되어 있는 이미지 목록을 조회합니다.
+* **명령어:** `docker images` 또는 `docker image ls`
 
-  4.2.9 도커 이미지 변경
-    태그 변경 : docker tag nginx my-nginx:v1 : 같은 이미지 다른 이름, 실무에서 버전관리 하려고 이용함
+---
 
-  4.2.10 도커 이미지 명령어 모음
-    다운로드 : docker pull nginx
-    목록 : docker images
-    상세구조 : docker history nginx
-    태그변경 : docker tag nginx my-nginx:v1
-    삭제 : docker rmi nginx
+#### 4.2.4 도커 컨테이너 실행
+* **기본 실행:** `docker run nginx`
+  * **⚙️ 내부 실행 순서:** 로컬 PC에서 이미지 존재 확인 ──> 컨테이너 격리 공간 생성 ──> nginx 프로세스 실행
 
-  4.2.11 도커 컨테이너 명령어 모음
-    실행 : docker run nginx
-    백그라운드 실행 : docker run -d nginx
-    실행 목록 : docker ps
-    전체 목록 : docker ps -a
-    내부 접속 : docker exec -it 컨테이너명 bash
-    로그 확인 : docker logs 컨테이너명
-    중지 : docker stop 컨테이너명
-    삭제 : docker rm 컨테이너명
+* **주요 실행 옵션 활용:**
+  * **백그라운드 실행 (`-d`):** `docker run -d nginx`
+    * *Detached 모드로 실행하여, 컨테이너가 켜진 후에도 터미널 창을 계속 사용할 수 있게 합니다.*
+  * **포트 연결 (`-p`):** `docker run -d -p 80:80 nginx`
+    * *외부에서 접속할 수 있도록 호스트 PC의 80번 포트와 컨테이너 내부의 80번 포트를 다리로 연결(포트 포워딩)합니다.*
+  * **이름 지정 (`--name`):** `docker run -d --name my-nginx nginx`
+    * *도커가 자동으로 부여하는 랜덤 이름 대신, 관리가 편하도록 `my-nginx`라는 직관적인 이름을 부여합니다.*
 
+ #### 4.2.5 도커 컨테이너 목록 확인
+* **실행 중인 컨테이너만 조회:** `docker ps`
+* **종료된 컨테이너를 포함한 전체 조회:** `docker ps -a`
+
+---
+
+#### 4.2.6 컨테이너 내부 접속
+* **기능:** `exec` 명령어를 통해 실행 중인 컨테이너 내부로 들어가 직접 리눅스 명령을 실행합니다.
+* **기본 접속 명령어:** `docker exec -it my-nginx bash`
+  * *내부 진입 후 명령어 예시:*
+    * 파일 확인: `ls`
+    * 프로세스 확인: `ps -ef`
+    * 컨테이너 밖으로 나가기(종료): `exit`
+* **💡 Tip (bash가 없을 경우):** 이미지에 따라 `bash` 쉘이 없을 수 있습니다. 이럴 때는 대안 쉘인 `sh`를 사용합니다.
+  * `docker exec -it 컨테이너명 sh`
+
+---
+
+#### 4.2.7 컨테이너 삭제
+* **정석적인 방법 (중지 후 삭제):**
+  1. 컨테이너 중지: `docker stop my-nginx`
+  2. 컨테이너 삭제: `docker rm my-nginx`
+* **한 번에 강제 삭제 (`-f`):** `docker rm -f my-nginx`
+  * *실행 중인 컨테이너를 정지함과 동시에 바로 삭제합니다.*
+
+---
+
+#### 4.2.8 이미지 삭제
+* **목록 확인:** `docker images`
+* **이미지 삭제 명령어:** `docker rmi nginx` 또는 `docker image rm nginx`
+* **⚠️ 주의:** 해당 이미지를 참조하거나 사용 중인 컨테이너가 하나라도 존재하면 삭제가 불가능합니다. (반드시 컨테이너 먼저 삭제 필요)
+
+---
+
+#### 4.2.9 도커 이미지 변경
+* **태그(버전) 변경 명령어:** `docker tag nginx my-nginx:v1`
+* **특징:** 이미지 ID는 같지만 다른 이름을 가진 '명찰'을 하나 더 다는 개념입니다. 실무에서 빌드된 이미지의 버전을 체계적으로 관리할 때 필수적으로 이용합니다.
+
+---
+
+### 🗂️ 도커 명령어 치트시트 모음
+
+#### 4.2.10 도커 이미지 명령어 모음
+* 📥 **다운로드:** `docker pull nginx` (도커 허브에서 이미지 가져오기)
+* 📋 **목록 조회:** `docker images` (로컬 PC에 저장된 이미지 확인)
+* 🔍 **상세 구조:** `docker history nginx` (이미지 빌드 레이어 확인)
+* 🏷️ **태그 변경:** `docker tag nginx my-nginx:v1` (이미지 버전 명찰 추가)
+* ❌ **이미지 삭제:** `docker rmi nginx` (컨테이너 미사용 시 삭제 가능)
+
+#### 4.2.11 도커 컨테이너 명령어 모음
+* 🚀 **컨테이너 실행:** `docker run nginx` (전면 실행)
+* 🔄 **백그라운드 실행:** `docker run -d nginx` (숨김 실행)
+* 🟢 **실행 목록:** `docker ps` (현재 가동 중인 컨테이너 확인)
+* 📜 **전체 목록:** `docker ps -a` (종료된 컨테이너 포함 확인)
+* 💻 **내부 접속:** `docker exec -it 컨테이너명 bash` (컨테이너 안으로 진입)
+* 📝 **로그 확인:** `docker logs <컨테이너명>` (컨테이너 내부 출력 결과물 확인)
+* 🛑 **실행 중지:** `docker stop <컨테이너명>` (안전하게 프로세스 종료)
+* 🗑️ **컨테이너 삭제:** `docker rm <컨테이너명>` (격리 공간 데이터 삭제)
   
     
     
