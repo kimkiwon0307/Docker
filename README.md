@@ -218,7 +218,93 @@
 8. **프로세스 종료:** 프로그램 실행 및 출력 작업 완료
 9. **컨테이너 종료:** 메인 프로세스가 종료됨에 따라 컨테이너도 즉시 자동 종료
 
+### 4.2 도커 기초 명령어
 
+#### 4.2.1 도커 이미지 다운로드
+> 💡 **이미지(Image)란?** 컨테이너를 생성하기 위한 **'독립된 설계도'**입니다.
+
+* **명령어:** `docker pull nginx`
+* **확인 명령어:** `docker images`
+
+##### 📊 이미지 다운로드 내부 동작 흐름
+사용자가 터미널에 다운로드 명령을 내린 후, 로컬 PC에 저장되기까지의 전체 흐름도입니다.
+
+```mermaid
+graph LR
+    A["1. 사용자가 명령어 입력<br>(docker pull nginx)"] --> B{2. 로컬에 이미지 존재 여부 확인}
+    B -- "이미 있음 (종료)" --> E["최신 상태 유지"]
+    B -- "이미지 없음" --> C["3. 외부 도커 허브(Docker Hub)<br>중앙 저장소 접속"]
+    C --> D["4. nginx 이미지 레이어<br>다운로드 진행"]
+    D --> F["5. 로컬 PC 저장소<br>(Local Registry) 저장 완료"]
+
+    %% 스타일링
+    style A fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
+    style C fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style F fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+
+  4.2.2 도커 이미지 상세 구조
+    nginx 이미지는 무엇으로 구성될까? : 실제로는 Linux OS 일부 + nginx 프로그램 + 라이브러리 + 설정 파일이다.
+    이미지 레어 구조
+      Docker 이미지 특징
+        Layer 구조. ex) Ubuntu Base -> nginx 설치 -> 설정 추가. 레이어가 쌓임. 확인 : docker history nginx
+    왜 중요할까? 이미지를 재사용 가능하다. Ubuntu 기반 이비지 100개이면 Ubuntu 부분은 공유해서 용량을 절약한다.
+
+  4.2.3 도커 이미지 목록 확인
+    명령어 : docker images, docker image ls : 현재 PC에 저장된 이미지 목록
+
+  4.2.4 도커 컨테이너 실행
+    기본 실행 : docker run nginx
+    실행 순서 : 이미지 확인 -> 컨테이너 생성 -> nginx 실행
+    백그라운드 실행 : docker run -d nginx : -d는 detached mode 
+    포트 연결 : docker run -d -p 80:80 nginx : 호스트 80 <-> 컨테이너 80 
+    이름 지정 : docker run -d --name my-nginx nginx 
+
+  4.2.5 도커 컨테이너 목록 확인
+    실행 중인 컨테이너 : docker ps
+    종료 포함 전체 보기 : docker ps -a
+
+  4.2.6 컨테이너 내부 접속
+    docker exec -it my-nginx bash : exec 의미는 컨테이너 내부 명령 실행
+    파일 확인 : ls
+    프로세스 확인 : ps -ef
+    종료 : exit
+    bash 없을 경우 : docker exec -it 컨테이너명 sh
+
+  4.2.7 컨테이너 삭제
+    중지 : docker stop my-nginx
+    삭제 : docker rm my-nginx
+    한번에 : docker rm -f my-nginx
+
+  4.2.8 이미지 삭제
+    목록 확인 : docker images
+    삭제 : docker rmi nginx 또는 docker images rm nginx : 컨테이너가 사용중이면 삭제 불가
+
+  4.2.9 도커 이미지 변경
+    태그 변경 : docker tag nginx my-nginx:v1 : 같은 이미지 다른 이름, 실무에서 버전관리 하려고 이용함
+
+  4.2.10 도커 이미지 명령어 모음
+    다운로드 : docker pull nginx
+    목록 : docker images
+    상세구조 : docker history nginx
+    태그변경 : docker tag nginx my-nginx:v1
+    삭제 : docker rmi nginx
+
+  4.2.11 도커 컨테이너 명령어 모음
+    실행 : docker run nginx
+    백그라운드 실행 : docker run -d nginx
+    실행 목록 : docker ps
+    전체 목록 : docker ps -a
+    내부 접속 : docker exec -it 컨테이너명 bash
+    로그 확인 : docker logs 컨테이너명
+    중지 : docker stop 컨테이너명
+    삭제 : docker rm 컨테이너명
+
+  
+    
+    
+    
+    
+    
 
 
 
