@@ -332,36 +332,37 @@
 * 🗑️ **컨테이너 삭제:** `docker rm <컨테이너명>` (격리 공간 데이터 삭제)
 
 
-4.3 도커 컨테이너 네트워크
-  docker run -d nginx 를 실행하면 nginx는 어디서 실행할까?
-    보통 내 서버에서 실행된다 생각하지만, 내 서버 안의 독립적인 네트워크 공간에서 실행된다.
+### 4.3 도커 컨테이너 네트워크
 
-  4.3.1 도커 컨테이너 네트워크 구조
-    컨테이너도 IP를 가진다.
-    docker run -d --name web nginx 를 실행하고 docker exec -it web bash로 들어가 ip addr 명령어를 입력하면 172.17.0.2 가나온다. 컨테이너는 자기만의 IP를 가진다.
-    구조
-      ubuntu host - docker0(가상 스위치) - container A(172.17.0.2) - containerB(172.17.0.3) - cotainerC(172.17.0.4)
-    docker 0 : Docker 설치하면 자동 생성된다. ip addr show docker0, docker0는 가상 스위치이다.
-    컨테이너끼리 통신 : web(172.17.0.2), db(172.17.0.3) 같은 네트워크라서 통신 가능
-    localhost 안되는 이유 : 컨테이너 내부에서 localhost는 컨테이너 자기 자신이다. web 컨테이너에서 localhost는 web, db컨테이너에서 localhost는 db 
-    포트 매핑 
-      docker run -d -p 80:80 nginx 의미는 호스트 80 -> 컨테이너 80 , 실제 구조는 브라우저 -> ubuntu:80 -> Docker NAT -> Container:80, 그래서 http://localhost 접속 가능
-    네트워크 비유
-      Ubunt 서버 : 아파트
-      docker0 : 복도
-      컨테이너 : 각 집, 각 집은 자기 방, 자기 주소 보유
-      복도(docker0)를 통해 통신
-  
-  4.3.2 도커 네트워크 확인
-    네트워크 목록 : docker network ls : NETWORK ID, NAME, bridge, host, none
-    bridge : 기본 네트워크 (가장 많이 사용)
-    host : 호스트 네트워크
-    none : 네트크 없음
-    상세 확인 : docker network inspect bridge, IP 대역, 컨테이너, Gateway 확인 가능
-    컨테이너 IP 확ㅇ니 : docker inspect 컨테이너명 또는 docker inspect 컨테이너명 | grep IPAddress
+도커는 호스트 서버(내 컴퓨터) 안의 격리된 독립적인 네트워크 공간에서 실행됩니다.
+
+#### 4.3.1 도커 컨테이너 네트워크 구조
+* **컨테이너 고유 IP 부여:** 각 컨테이너는 호스트와 분리된 자신만의 고유한 내부 IP를 가집니다.
+  * 컨테이너 실행 예시: `docker run -d --name web nginx`
+  * 컨테이너 내부 IP 확인: `docker exec -it web bash` 진입 후 `ip addr` 입력 (결과 예시: 172.17.0.2)
+
+* **도커 네트워크 아키텍처 기본 구조:**
+  * 구조 형태: [Ubuntu Host] ➔ [docker0 가상 스위치] ➔ [Container A, B, C]
+  * **docker0:** 도커를 설치하면 시스템에 자동으로 생성되는 '가상 네트워크 스위치(브리지)'입니다. (확인 명령어: `ip addr show docker0`)
+
+* **컨테이너 간의 통신:**
+  * 동일한 호스트 내에 생성된 컨테이너들은 `docker0`라는 같은 가상 네트워크 대역에 묶이므로 서로 통신이 가능합니다. (ex. web 컨테이너 172.17.0.2 ➔ db 컨테이너 172.17.0.3 통신 가능)
+
+* **컨테이너 내부에서 localhost가 안 되는 이유:**
+  * 컨테이너 내부에서의 `localhost`나 `127.0.0.1`은 외부 호스트 PC가 아니라, **컨테이너 자기 자신**을 가리키기 때문입니다. 즉, web 컨테이너 안의 localhost는 web 컨테이너 자체일 뿐이므로 db 컨테이너와 연결되지 않습니다.
+
+* **포트 매핑 (Port Mapping):**
+  * 외부에서 컨테이너 내부 서비스에 접근할 수 있도록 호스트의 포트와 컨테이너의 포트를 연결해 주는 기술입니다.
+  * 실행 예시: `docker run -d -p 80:80 nginx` (호스트의 80번 포트와 컨테이너의 80번 포트 연결)
+  * 실제 트래픽 흐름: 외부 브라우저 ➔ Ubuntu 호스트(80번 포트) ➔ Docker NAT 인터페이스 ➔ 컨테이너(80번 포트) ➔ 웹 접속 성공 (http://localhost 가능)
+
+* **직관적인 네트워크 비유:**
+  * **Ubuntu 서버** = 하나의 거대한 아파트
+  * **docker0** = 아파트 층마다 있는 공용 복도
+  * **컨테이너** = 복도를 통해 연결된 각각의 집들
+  * 각 집(컨테이너)은 문패와 호수(자기 주소 및 IP)를 따로 가지고 있으며, 공용 복도(docker0)를 통해서 옆집과 자유롭게 소통합니다.
+
     
-    
-      
     
     
     
