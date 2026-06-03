@@ -570,4 +570,139 @@ python manage.py runserver 0.0.0.0:8000
 | **방화벽 상태 확인** | `sudo ufw status` | 목록에 `8000 ALLOW Anywhere`가 표시되는지 확인 |
 
 
+## 5.2 YAML 기초
+* **YAML이란?** 주로 시스템의 구성이나 환경 설정을 정의할 때 사용하는 데이터 직렬화 양식(설정 파일 형식)입니다.
+
+### 5.2.1 YAML의 개념 및 특징
+* **사람 중심의 포맷:** JSON이나 XML에 비해 불필요한 구문 기호(`{}`, `[]`, `<>`)가 적어 사람이 읽고 쓰기 매우 편합니다.
+* **⚠️ 주의해야 할 특징:**
+  1. **들여쓰기(Indentation) 중심:** 들여쓰기를 통해 데이터의 계층 구조를 판단하므로 엄격하게 맞춰야 합니다.
+  2. **탭(Tab) 사용 절대 금지:** 에디터 설정과 관계없이 문법 오류를 유발하므로 **반드시 스페이스바(공백)**로만 들여쓰기를 해야 합니다.
+  3. **높은 가독성:** 구조가 한눈에 들어와 복잡한 서비스 설정(Docker Compose 등)도 쉽게 표현할 수 있습니다.
+
+---
+
+### 5.2.2 PyYAML 설치
+* **PyYAML 이란?** 파이썬(Python) 프로그램 안에서 YAML 파일을 읽어서(Parsing) 데이터로 쓰거나, 반대로 파이썬 데이터를 YAML 파일로 변환해 주는 라이브러리입니다.
+* **설치 및 확인 명령어 (가상환경 활성화 상태 필수):**
+  ```bash
+  # 라이브러리 설치
+  pip install pyyaml
+
+  # 설치 완료 여부 확인
+  pip list | grep PyYAML
+  ```
+
+
+# 8. 주석은 샵(#) 기호로 작성합니다.
+
+# 1. Key-Value 구조 (콜론 뒤에 반드시 '공백 한 칸'이 있어야 합니다)
+server_name: "Django-Test-Server"
+
+# 2. 문자열 (일반적인 문자열은 따옴표 생략 가능)
+framework: Django
+
+# 3. 숫자 (정수 및 실수)
+port: 8000
+version: 3.12
+
+# 4. Boolean (참과 거짓은 소문자로 표기 가능)
+debug_mode: true
+
+# 5. 리스트 / 배열 (하이픈 '-' 뒤에 공백을 두고 나열)
+allowed_hosts:
+  - localhost
+  - 127.0.0.1
+  - 0.0.0.0
+
+# 6. 객체 / 딕셔너리 (들여쓰기로 하위 계층 표현)
+database:
+  engine: postgresql
+  user: root
+
+# 7. 리스트 안에 객체가 들어간 구조 (실무 설정에서 가장 많이 씀)
+services:
+  - name: web
+    image: django_app:latest
+  - name: db
+    image: postgres:16
+
+## 5.3 도커를 활용한 Django 실행
+
+### 5.3.1 도커 호스트에 Django 프로젝트 생성
+* 앞서 5.1 절에서 구축한 파이썬 가상환경(`django-lab`) 내에 기본 Django 웹 프로젝트 뼈대 구조를 생성합니다.
+
+---
+
+### 5.3.2 Django 이미지 빌드
+
+#### 1. Dockerfile 생성
+프로젝트 루트 디렉터리에 확장자 없이 `Dockerfile`을 생성하고 아래 내용을 작성합니다.
+
+```dockerfile
+# 1. 기반이 될 파이썬 공식 이미지 지정 (버전 3.12)
+FROM python:3.12
+
+# 2. 컨테이너 내부에서 명령어가 실행될 작업 디렉터리 설정
+WORKDIR /app
+
+# 3. 호스트의 현재 디렉터리 파일들을 컨테이너 내부의 WORKDIR(/app)로 복사
+COPY . .
+
+# 4. 이미지 빌드 과정에서 Django 패키지 설치
+RUN pip install django
+
+# 5. 컨테이너가 시작될 때 자동으로 실행할 기본 명령어 지정 (외부 접속 허용)
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+```
+
+### 5.3.3 Django 컨테이너 실행
+
+빌드된 이미지를 바탕으로 백그라운드에서 컨테이너를 구동합니다.
+
+```bash
+docker run -d \
+  -p 8000:8000 \
+  --name django-web \
+  django-app
+```
+
+5.4 Nginx, django 연동 후 실행
+전체 구조
+  사용자 브라우저 -> Nginx -> Gunicorn -> Django
+각 역할
+Nginx : 웹서버
+Gunicorn : WSGI 서버 : Nginx와 Django 연결
+Django : 애플리케이션
+
+5.4.1 Nginx 컨테이너 실행
+1. docker pull nginx
+2. docker run -d --name nginx-web -p 80:80 nginx
+3. docker ps
+4. http://localhost
+
+5.4.2 Gunicorn을 통한 연동
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
  
