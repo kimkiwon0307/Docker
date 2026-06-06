@@ -594,97 +594,78 @@ python manage.py runserver 0.0.0.0:8000
   ```
 
 
-# 8. 주석은 샵(#) 기호로 작성합니다.
-
-# 1. Key-Value 구조 (콜론 뒤에 반드시 '공백 한 칸'이 있어야 합니다)
-server_name: "Django-Test-Server"
-
-# 2. 문자열 (일반적인 문자열은 따옴표 생략 가능)
-framework: Django
-
-# 3. 숫자 (정수 및 실수)
-port: 8000
-version: 3.12
-
-# 4. Boolean (참과 거짓은 소문자로 표기 가능)
-debug_mode: true
-
-# 5. 리스트 / 배열 (하이픈 '-' 뒤에 공백을 두고 나열)
-allowed_hosts:
-  - localhost
-  - 127.0.0.1
-  - 0.0.0.0
-
-# 6. 객체 / 딕셔너리 (들여쓰기로 하위 계층 표현)
-database:
-  engine: postgresql
-  user: root
-
-# 7. 리스트 안에 객체가 들어간 구조 (실무 설정에서 가장 많이 씀)
-services:
-  - name: web
-    image: django_app:latest
-  - name: db
-    image: postgres:16
-
 ## 5.3 도커를 활용한 Django 실행
 
-### 5.3.1 도커 호스트에 Django 프로젝트 생성
-* Docker는 이미 만들어진 프로그램을 포장하고 실행하는 역할이다.
+ ### 5.3.1 도커 호스트에 Django 프로젝트 생성
+> ⚠️ **주의:** Docker는 프로그램을 대신 만들어주지 않습니다. Docker는 이미 만들어진 프로그램을 **포장(이미지화)하고 실행(컨테이너화)하는 역할**입니다. 따라서 먼저 호스트 환경에서 Django 프로젝트를 생성해야 합니다. (*여기까지는 Docker와 무관한 과정입니다.*)
+
+* **가상환경 활성화 및 프로젝트 생성 명령어:**
+# 1. 프로젝트 폴더 생성 및 이동
+mkdir docker-django && cd docker-django
+
+# 2. 가상환경 활성화
+source venv/bin/activate
+
+# 3. Django 프로젝트 생성 (현재 폴더 기준)
+django-admin startproject config .
+
+# 4. 로컬 구동 테스트 (정상 작동 확인)
+python manage.py runserver 0.0.0.0:8000
 
 ---
 
 ### 5.3.2 Django 이미지 빌드
+> 🐳 **여기서부터 Docker가 등장합니다.** 작성한 코드를 컨테이너로 만들기 위해 이미지를 빌드하는 과정입니다.
 
-#### 1. Dockerfile 생성
-프로젝트 루트 디렉터리에 확장자 없이 `Dockerfile`을 생성하고 아래 내용을 작성합니다.
+#### 1. requirements.txt 생성 
+컨테이너 내부 환경에 설치할 파이썬 라이브러리 목록을 기록합니다.
+# 설치된 라이브러리 기록
+pip freeze > requirements.txt
 
-```dockerfile
-# 1. 기반이 될 파이썬 공식 이미지 지정 (버전 3.12)
+# 생성된 내용 확인
+cat requirements.txt
+
+#### 2. Dockerfile 생성
+프로젝트 루트 디렉터리에 `Dockerfile`을 생성(`nano Dockerfile`)하고 아래 내용을 작성합니다.
+
+# 1. 기반이 될 파이썬 공식 이미지 지정
 FROM python:3.12
 
 # 2. 컨테이너 내부에서 명령어가 실행될 작업 디렉터리 설정
 WORKDIR /app
 
-# 3. 호스트의 현재 디렉터리 파일들을 컨테이너 내부의 WORKDIR(/app)로 복사
+# 3. 라이브러리 설치를 위해 requirements.txt를 컨테이너로 복사
+COPY requirements.txt .
+
+# 4. 이미지 빌드 과정에서 파이썬 패키지 설치
+RUN pip install -r requirements.txt
+
+# 5. 호스트의 현재 디렉터리 파일들을 컨테이너 내부로 전체 복사
 COPY . .
 
-# 4. 이미지 빌드 과정에서 Django 패키지 설치
-RUN pip install django
-
-# 5. 컨테이너가 시작될 때 자동으로 실행할 기본 명령어 지정 (외부 접속 허용)
+# 6. 컨테이너가 시작될 때 자동으로 실행될 명령어 설정
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-```
+
+#### 3. 도커 이미지 빌드
+작성한 Dockerfile을 기반으로 빌드를 수행합니다.
+* **빌드 구조:** Dockerfile -> docker build -> django-app (이미지 생성)
+
+# 이미지 빌드 (-t 옵션 뒤에 이미지 이름 지정, 끝에 점 '.' 필수)
+docker build -t django-app .
+
+# 생성된 도커 이미지 목록 확인
+docker images
+
+---
 
 ### 5.3.3 Django 컨테이너 실행
+빌드된 이미지를 바탕으로 독립된 컨테이너를 구동하고 상태를 관리합니다.
 
-빌드된 이미지를 바탕으로 백그라운드에서 컨테이너를 구동합니다.
-
-```bash
-docker run -d \
-  -p 8000:8000 \
-  --name django-web \
-  django-app
-```
-
-5.4 Nginx, django 연동 후 실행
-전체 구조
-  사용자 브라우저 -> Nginx -> Gunicorn -> Django
-각 역할
-Nginx : 웹서버
-Gunicorn : WSGI 서버 : Nginx와 Django 연결
-Django : 애플리케이션
-
-5.4.1 Nginx 컨테이너 실행
-1. docker pull nginx
-2. docker run -d --name nginx-web -p 80:80 nginx
-3. docker ps
-4. http://localhost
-
-5.4.2 Gunicorn을 통한 연동
-
-
-
+| 작업 내용 | 실행 명령어 | 비고 |
+| :--- | :--- | :--- |
+| **컨테이너 백그라운드 실행** | docker run -d -p 8000:8000 --name django-container django-app | -d: 백그라운드 실행<br>-p: 호스트 8000 포트와 컨테이너 8000 포트 연결 |
+| **실행 중인 컨테이너 확인** | docker ps | 컨테이너 ID, 상태(STATUS), 포트 포워딩 정보 확인 |
+| **컨테이너 로그 확인** | docker logs django-container | Django 서버의 구동 로그 및 실시간 에러 확인 |
 
 
 
