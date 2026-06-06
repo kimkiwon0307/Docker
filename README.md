@@ -619,10 +619,10 @@ python manage.py runserver 0.0.0.0:8000
 
 #### 1. requirements.txt 생성 
 컨테이너 내부 환경에 설치할 파이썬 라이브러리 목록을 기록합니다.
-# 설치된 라이브러리 기록
+#### 설치된 라이브러리 기록
 pip freeze > requirements.txt
 
-# 생성된 내용 확인
+#### 생성된 내용 확인
 cat requirements.txt
 
 #### 2. Dockerfile 생성
@@ -650,15 +650,15 @@ CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 작성한 Dockerfile을 기반으로 빌드를 수행합니다.
 * **빌드 구조:** Dockerfile -> docker build -> django-app (이미지 생성)
 
-# 이미지 빌드 (-t 옵션 뒤에 이미지 이름 지정, 끝에 점 '.' 필수)
+#### 이미지 빌드 (-t 옵션 뒤에 이미지 이름 지정, 끝에 점 '.' 필수)
 docker build -t django-app .
 
-# 생성된 도커 이미지 목록 확인
+#### 생성된 도커 이미지 목록 확인
 docker images
 
 ---
 
-### 5.3.3 Django 컨테이너 실행
+#### 5.3.3 Django 컨테이너 실행
 빌드된 이미지를 바탕으로 독립된 컨테이너를 구동하고 상태를 관리합니다.
 
 | 작업 내용 | 실행 명령어 | 비고 |
