@@ -668,7 +668,121 @@ docker images
 | **컨테이너 로그 확인** | docker logs django-container | Django 서버의 구동 로그 및 실시간 에러 확인 |
 
 
+## 5.4 Nginx, Django 연동 후 실행
 
+### 5.4.1 Nginx 컨테이너 실행
+Nginx가 정상적으로 구동되는지 확인하기 위해 우선 단독으로 컨테이너를 실행합니다.
+
+# Nginx 공식 이미지를 사용해 백그라운드 실행 (호스트 80 포트 연결)
+docker run -d --name nginx -p 80:80 nginx
+
+# 실행 상태 확인
+docker ps
+
+---
+
+### 5.4.2 Gunicorn을 통한 연동
+> 💡 **Gunicorn이란?** Django 전용 WAS(Web Application Server)입니다. 보안과 성능을 위해 웹 서버(Nginx)와 파이썬 웹 프레임워크(Django) 사이를 중계하는 역할을 합니다.
+
+* **Gunicorn 설치 및 기록:**
+호스트 가상환경에서 `gunicorn`을 설치하고 `requirements.txt`에 반영합니다.
+
+# 가상환경에서 gunicorn 설치
+pip install gunicorn
+
+# 변경된 패키지 목록을 requirements.txt에 업데이트
+pip freeze > requirements.txt
+
+---
+
+### 5.4.3 Django 이미지 빌드
+기존 개발용 `runserver` 대신 `gunicorn`을 실행하도록 `Dockerfile`을 수정하고 이미지를 다시 빌드합니다.
+
+#### 1. Dockerfile 수정 (마지막 CMD 부분 변경)
+# (앞부분은 동일)
+FROM python:3.12
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+
+# 개발 서버(runserver) 대신 gunicorn으로 포트 8000번 구동하도록 수정
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+
+#### 2. 이미지 빌드
+# 변경된 Dockerfile을 기반으로 django-app 이미지 재빌드
+docker build -t django-app .
+
+---
+
+### 5.4.4 Nginx 이미지 빌드
+Django 전용 설정이 적용된 Nginx 이미지를 만들기 위해 별도의 폴더와 설정 파일들을 생성합니다.
+
+#### 1. nginx 설정 파일 작성
+프로젝트 루트에 `nginx` 폴더를 생성하고, 내부에 `default.conf` 파일을 작성합니다.
+mkdir nginx && nano nginx/default.conf
+
+* **nginx/default.conf 내용:**
+upstream django {
+    server django-app:8000;
+}
+
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://django;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+#### 2. Nginx Dockerfile 작성
+`nginx` 폴더 내부에 `Dockerfile`을 생성(`nano nginx/Dockerfile`)하고 아래 내용을 작성합니다.
+
+# Nginx 공식 이미지 사용
+FROM nginx:latest
+
+# 기본 설정 파일을 제거하고 새로 작성한 설정 파일 복사
+RUN rm /etc/nginx/conf.d/default.conf
+COPY default.conf /etc/nginx/conf.d/
+
+#### 3. Nginx 이미지 빌드
+# nginx 폴더로 이동하여 이미지 빌드
+cd nginx
+docker build -t nginx-app .
+cd ..
+
+---
+
+### 5.4.5 Django와 Nginx 연동 후 컨테이너 실행
+독립된 두 컨테이너(Django, Nginx)가 서로 통신할 수 있도록 하나의 가상 네트워크 묶어 실행합니다.
+
+| 순서 | 작업 내용 | 실행 명령어 |
+| :--- | :--- | :--- |
+| **1** | **도커 가상 네트워크 생성** | docker network create web-network |
+| **2** | **Django 컨테이너 실행** | docker run -d --name django-app --network web-network django-app |
+| **3** | **Nginx 컨테이너 실행** | docker run -d --name nginx-app --network web-network -p 80:80 nginx-app |
+
+> 📌 **참고:** Django 컨테이너를 실행할 때 `--name django-app`으로 이름을 지정해야 Nginx 설정 파일(`default.conf`)의 `server django-app:8000;` 주소를 통해 도커 내부에서 정상적으로 연결됩니다.
+
+
+5.5 Nginx, Django, PostgreSQL 컨테이너 연동
+5.6 Nginx, django와 로컬 PostgreSQL 연동
+
+5.7 도커 컴포즈를 활용한 컨테이너 실행
+  5.7.1 도커 컴포즈의 개념
+  Docker Compose란? 여러 컨테이너를 하나의 파일로 관리하는 도구이다.
+  예전 방식 : docker run postgres, docker run django, docker run nginx 였다면 컴포즈 방식은 docker compose up -d 한줄이다.
+
+  5.7.2 도커 컴포즈 설치
+  5.7.3 실습 디렉터리 구성
+  5.7.4 docker-compose.yml 파일 작성
+  
+    
+
+
+      
 
 
 
