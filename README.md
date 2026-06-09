@@ -600,16 +600,16 @@ python manage.py runserver 0.0.0.0:8000
 > ⚠️ **주의:** Docker는 프로그램을 대신 만들어주지 않습니다. Docker는 이미 만들어진 프로그램을 **포장(이미지화)하고 실행(컨테이너화)하는 역할**입니다. 따라서 먼저 호스트 환경에서 Django 프로젝트를 생성해야 합니다. (*여기까지는 Docker와 무관한 과정입니다.*)
 
 * **가상환경 활성화 및 프로젝트 생성 명령어:**
-# 1. 프로젝트 폴더 생성 및 이동
+#### 1. 프로젝트 폴더 생성 및 이동
 mkdir docker-django && cd docker-django
 
-# 2. 가상환경 활성화
+#### 2. 가상환경 활성화
 source venv/bin/activate
 
-# 3. Django 프로젝트 생성 (현재 폴더 기준)
+#### 3. Django 프로젝트 생성 (현재 폴더 기준)
 django-admin startproject config .
 
-# 4. 로컬 구동 테스트 (정상 작동 확인)
+#### 4. 로컬 구동 테스트 (정상 작동 확인)
 python manage.py runserver 0.0.0.0:8000
 
 ---
