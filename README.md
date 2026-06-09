@@ -628,22 +628,22 @@ cat requirements.txt
 #### 2. Dockerfile 생성
 프로젝트 루트 디렉터리에 `Dockerfile`을 생성(`nano Dockerfile`)하고 아래 내용을 작성합니다.
 
-# 1. 기반이 될 파이썬 공식 이미지 지정
+#### 1. 기반이 될 파이썬 공식 이미지 지정
 FROM python:3.12
 
-# 2. 컨테이너 내부에서 명령어가 실행될 작업 디렉터리 설정
+#### 2. 컨테이너 내부에서 명령어가 실행될 작업 디렉터리 설정
 WORKDIR /app
 
-# 3. 라이브러리 설치를 위해 requirements.txt를 컨테이너로 복사
+#### 3. 라이브러리 설치를 위해 requirements.txt를 컨테이너로 복사
 COPY requirements.txt .
 
-# 4. 이미지 빌드 과정에서 파이썬 패키지 설치
+#### 4. 이미지 빌드 과정에서 파이썬 패키지 설치
 RUN pip install -r requirements.txt
 
-# 5. 호스트의 현재 디렉터리 파일들을 컨테이너 내부로 전체 복사
+#### 5. 호스트의 현재 디렉터리 파일들을 컨테이너 내부로 전체 복사
 COPY . .
 
-# 6. 컨테이너가 시작될 때 자동으로 실행될 명령어 설정
+#### 6. 컨테이너가 시작될 때 자동으로 실행될 명령어 설정
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 #### 3. 도커 이미지 빌드
