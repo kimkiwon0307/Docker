@@ -115,10 +115,10 @@
    * Docker 저장소의 보안 인증 및 암호화 키를 다루기 위한 필수 도구입니다.
 4. **Docker GPG Key 등록 :**
    
-# sudo install -m 0755 -d /etc/apt/keyrings
-# curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-# sudo chmod a+r /etc/apt/keyrings/docker.gpg
-# 💡 GPG Key란? 패키지 위변조를 방지하기 위해 진짜 Docker 공식 저장소에서 제공하는 안전한 패키지가 맞는지 검증하는 인증서입니다.
+#### sudo install -m 0755 -d /etc/apt/keyrings
+#### curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+#### sudo chmod a+r /etc/apt/keyrings/docker.gpg
+#### 💡 GPG Key란? 패키지 위변조를 방지하기 위해 진짜 Docker 공식 저장소에서 제공하는 안전한 패키지가 맞는지 검증하는 인증서입니다.
 
 5. **Docker Repository 등록 :** *
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] [https://download.docker.com/linux/ubuntu](https://download.docker.com/linux/ubuntu) $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
