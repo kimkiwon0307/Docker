@@ -782,20 +782,72 @@ cd ..
 
 > 📌 **참고:** Django 컨테이너를 실행할 때 `--name django-app`으로 이름을 지정해야 Nginx 설정 파일(`default.conf`)의 `server django-app:8000;` 주소를 통해 도커 내부에서 정상적으로 연결됩니다.
 
-
 5.5 Nginx, Django, PostgreSQL 컨테이너 연동
 5.6 Nginx, django와 로컬 PostgreSQL 연동
 
-5.7 도커 컴포즈를 활용한 컨테이너 실행
-  5.7.1 도커 컴포즈의 개념
-  Docker Compose란? 여러 컨테이너를 하나의 파일로 관리하는 도구이다.
-  예전 방식 : docker run postgres, docker run django, docker run nginx 였다면 컴포즈 방식은 docker compose up -d 한줄이다.
+### 5.7 도커 컴포즈를 활용한 컨테이너 실행
 
-  5.7.2 도커 컴포즈 설치
-  5.7.3 실습 디렉터리 구성
-  5.7.4 docker-compose.yml 파일 작성
-  
-    
+#### 5.7.1 도커 컴포즈의 개념
+컨테이너 설정을 파일에 적어두자라는 생각에서 나온 것이 Docker Compose입니다.
+* **Docker Compose 한줄 정의:** 여러 개의 컨테이너를 하나의 YAML 파일로 관리하는 도구
+
+---
+
+#### 5.7.2 도커 컴포즈 설치
+```bash
+# 패키지 목록 업데이트
+sudo apt update
+
+# 도커 컴포즈 v2 설치
+sudo apt install -y docker-compose-v2
+
+# 설치 완료 및 버전 확인
+docker compose version
+```
+
+#### 5.7.3 실습 디렉터리 구성
+Docker Compose는 기본적으로 docker-compose.yml 파일을 읽고 컨테이너를 생성합니다.
+ ```bash 
+  # 폴더 생성
+      mkdir compose-lab
+      cd compose-lab
+
+   # 파일 생성
+      touch docker-compose.yml
+  ```
+
+
+#### 5.7.4 docker-compose.yml 파일 작성
+
+    ```YAML
+      services:
+
+        nginx:
+
+          image: nginx
+
+          container_name: my-nginx
+
+          ports:
+            - "80:80"
+    ```
+
+   * **services :** 컨테이너 목록
+* **nginx :** 서비스 이름
+* **image :** 사용할 이미지
+* **container_name :** 컨테이너 이름
+* **ports :** 포트 연결
+
+---
+
+#### 5.7.5 빌드 및 실행
+
+| 순서 | 작업 내용 | 실행 명령어 |
+| :--- | :--- | :--- |
+| **1** | **컨테이너 실행 (백그라운드)** | `docker compose up -d` |
+| **2** | **실행 상태 확인** | `docker ps` |
+| **3** | **컨테이너 중지** | `docker compose stop` |
+| **4** | **컨테이너 및 네트워크 삭제** | `docker compose down` |
 
 </details>
       
