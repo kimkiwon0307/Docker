@@ -1,4 +1,4 @@
-# Docker
+    # Docker
 <details>
 
 <summary><kbd>📁 2장 도커의 개념 (클릭하여 펼치기)</kbd></summary>
@@ -515,348 +515,147 @@ docker inspect <컨테이너명> | grep IPAddress
   
 <details>
 
-<summary><kbd>📁 5장. 도커를 활용한 Django 실행 (클릭하여 펼치기)</kbd></summary>  
-  
+<summary><kbd>📁 5장. 도커를 활용한 Spring Boot 실행 (클릭하여 펼치기)</kbd></summary>  
 
+ ### 5.1 추가 실습 환경 구축
+  Ubuntu 서버에서 Java를 설치하고 Spring Boot를 실행하여 외부 브라우저로 접속하기 위한 실습 환경을 구축합니다.
 
-* **개요:** 4장까지 배운 도커 기본 사용법을 바탕으로, 실제 웹 서비스 개발 및 배포 흐름을 학습합니다.
-* **Django(장고)란?** 파이썬(Python) 기반의 오픈소스 웹 프레임워크로, 웹사이트를 빠르고 안정적으로 만들 수 있게 도와주는 도구입니다.
+  #### 5.1.1 Java 설치 및 버전 관리 (SDKMAN 활용)
+  Spring Boot는 Java 가상 머신(JVM) 위에서 동작하므로 JDK 설치가 필수적입니다. 여기서는 여러 자바 버전을 쉽게 관리할 수 있는 SDKMAN을 사용하여 Java 17을 설치하고 고정합니다.
 
----
+  * **Java 설치 및 버전 변경 순서:**
+    ```bash
+    # 1. SDKMAN을 통해 Java 17 버전 다운로드 및 설치
+    sdk install java 17.0.10-open
 
-### 5.1 추가 실습 환경 구축
+    # 2. 현재 터미널 창에서 Java 17 사용 설정
+    sdk use java 17.0.10-open
 
-#### 5.1.1 pyenv 설치
-* **pyenv란?** 한 서버에서 여러 버전의 파이썬을 독립적으로 관리하고 바꿀 수 있게 해주는 **파이썬 버전 관리자**입니다.
-* **도커 실습 전 pyenv를 설치하는 이유:** 도커 컨테이너를 만들기 전, 로컬(호스트) 환경에서 Django 프로젝트 코드를 먼저 생성하고 개발하기 위함입니다.
-* **서비스 빌드/배포 흐름:** `Django 코드 작성 (로컬)` ➔ `Docker 이미지 생성` ➔ `Docker 컨테이너 실행`
+    # 3. 시스템 기본값(Default)을 Java 17로 완전히 고정
+    sdk default java 17.0.10-open
 
-* **Ubuntu 환경 설치 순서:**
-  1. 의존성 패키지 설치
-  2. `pyenv` 설치
-  3. 환경 변수(`~/.bashrc` 또는 `~/.bash_profile`) 등록
-  4. 설정 적용: `source ~/.bashrc`
-  5. 버전 확인: `pyenv --version`
-
----
-
-#### 5.1.2 pyenv를 활용한 파이썬 가상 환경 구축
-
-| 단계 | 수행 작업 | 실행 명령어 | 비고 |
-| :---: | :--- | :--- | :--- |
-| **1** | **파이썬 설치 & 확인** | `pyenv install 3.12.3` <br> `pyenv versions` | 지정한 버젼의 파이썬 다운로드 |
-| **2** | **프로젝트 디렉터리 생성** | `mkdir django-lab && cd django-lab` | 작업 폴더 생성 및 이동 |
-| **3** | **해당 폴더 파이썬 버전 지정** | `pyenv local 3.12.3` | 폴더 내 기본 파이썬 버전 고정 |
-| **4** | **독립된 가상환경 생성** | `python -m venv venv` | 프로젝트 전용 가상환경 폴더 생성 |
-| **5** | **가상환경 활성화 & 확인** | `source venv/bin/activate` <br> `which python` | 가상환경 진입 (터미널 앞에 `(venv)` 표시 확인) |
-| **6** | **Django 설치 & 확인** | `pip install django` <br> `django-admin --version` | 가상환경 내부에 Django 패키지 설치 |
- 
-#### 5.1.3 tree 설치
-* **tree란?** 터미널에서 디렉터리와 파일 구조를 트리 형태로 이쁘게 **시각화해 주는 도구**입니다.
-* **설치 명령어:** ```bash
-  sudo apt install tree -y
-  ```
-
-#### 5.1.4 Django를 실행하기 위한 네트워크 설정
-
-* **Django 기본 포트:** `8000`
-* **기본 개발 서버 실행 명령어:** `python manage.py runserver` (기본값: `127.0.0.1:8000`)
-
----
-
-##### 🚨 Docker 환경에서의 네트워크 문제와 해결책
-
-* **문제 발생 (`127.0.0.1`):** 도커 컨테이너 내부에서 `127.0.0.1`로 서버를 열면, 루프백(Loopback) IP 특성상 **컨테이너 자기 자신**만 접속할 수 있게 됩니다. 즉, 호스트(PC)나 외부 브라우저에서 컨테이너 안으로 접근이 불가능합니다.
-* **해결 방법 (`0.0.0.0`):** 명령어 뒤에 구체적인 IP 대신 **`0.0.0.0:8000`**을 붙여 실행합니다. 이는 **"모든 네트워크 인터페이스(외부 접속 포함)로부터의 요청을 허용하겠다"**는 의미입니다.
-
-```bash
-# 외부 접속을 허용하는 Django 실행 명령어
-python manage.py runserver 0.0.0.0:8000
-```
-
-##### 🌐 포트 포워딩 및 네트워크 구조
-
-도커 컨테이너를 구동할 때는 외부 포트와 컨테이너 내부 포트를 연결하는 **`-p` (포트 포워딩)** 옵션이 필수적입니다.
-
-* **도커 실행 명령어:** `docker run -p 8000:8000 <이미지명>`
-* **데이터 전달 구조:**
-  `사용자 브라우저 (ubuntu:8000)` ➔ `호스트 포트 (8000)` ➔ `도커 엔진 포트 포워딩` ➔ `Django 컨테이너 (0.0.0.0:8000)`
-
----
-
-##### 🛡️ Ubuntu 방화벽(UFW) 설정
-
-외부 브라우저에서 접속이 되지 않는다면, 우분투 자체 방화벽에서 8000번 포트를 차단하고 있을 확률이 높습니다. 아래 명령어로 해당 포트를 개방해 주어야 합니다.
-
-| 작업 내용 | 실행 명령어 | 비고 |
-| :--- | :--- | :--- |
-| **8000번 포트 허용** | `sudo ufw allow 8000` | 외부에서 Django 서버로 접근할 수 있도록 포트 개방 |
-| **방화벽 상태 확인** | `sudo ufw status` | 목록에 `8000 ALLOW Anywhere`가 표시되는지 확인 |
-
-
-## 5.2 YAML 기초
-* **YAML이란?** 주로 시스템의 구성이나 환경 설정을 정의할 때 사용하는 데이터 직렬화 양식(설정 파일 형식)입니다.
-
-### 5.2.1 YAML의 개념 및 특징
-* **사람 중심의 포맷:** JSON이나 XML에 비해 불필요한 구문 기호(`{}`, `[]`, `<>`)가 적어 사람이 읽고 쓰기 매우 편합니다.
-* **⚠️ 주의해야 할 특징:**
-  1. **들여쓰기(Indentation) 중심:** 들여쓰기를 통해 데이터의 계층 구조를 판단하므로 엄격하게 맞춰야 합니다.
-  2. **탭(Tab) 사용 절대 금지:** 에디터 설정과 관계없이 문법 오류를 유발하므로 **반드시 스페이스바(공백)**로만 들여쓰기를 해야 합니다.
-  3. **높은 가독성:** 구조가 한눈에 들어와 복잡한 서비스 설정(Docker Compose 등)도 쉽게 표현할 수 있습니다.
-
----
-
-### 5.2.2 PyYAML 설치
-* **PyYAML 이란?** 파이썬(Python) 프로그램 안에서 YAML 파일을 읽어서(Parsing) 데이터로 쓰거나, 반대로 파이썬 데이터를 YAML 파일로 변환해 주는 라이브러리입니다.
-* **설치 및 확인 명령어 (가상환경 활성화 상태 필수):**
-  ```bash
-  # 라이브러리 설치
-  pip install pyyaml
-
-  # 설치 완료 여부 확인
-  pip list | grep PyYAML
-  ```
-
-
-## 5.3 도커를 활용한 Django 실행
-
- ### 5.3.1 도커 호스트에 Django 프로젝트 생성
-> ⚠️ **주의:** Docker는 프로그램을 대신 만들어주지 않습니다. Docker는 이미 만들어진 프로그램을 **포장(이미지화)하고 실행(컨테이너화)하는 역할**입니다. 따라서 먼저 호스트 환경에서 Django 프로젝트를 생성해야 합니다. (*여기까지는 Docker와 무관한 과정입니다.*)
-
-* **가상환경 활성화 및 프로젝트 생성 명령어:**
-#### 1. 프로젝트 폴더 생성 및 이동
-mkdir docker-django && cd docker-django
-
-#### 2. 가상환경 활성화
-source venv/bin/activate
-
-#### 3. Django 프로젝트 생성 (현재 폴더 기준)
-django-admin startproject config .
-
-#### 4. 로컬 구동 테스트 (정상 작동 확인)
-python manage.py runserver 0.0.0.0:8000
-
----
-
-### 5.3.2 Django 이미지 빌드
-> 🐳 **여기서부터 Docker가 등장합니다.** 작성한 코드를 컨테이너로 만들기 위해 이미지를 빌드하는 과정입니다.
-
-#### 1. requirements.txt 생성 
-컨테이너 내부 환경에 설치할 파이썬 라이브러리 목록을 기록합니다.
-#### 설치된 라이브러리 기록
-pip freeze > requirements.txt
-
-#### 생성된 내용 확인
-cat requirements.txt
-
-#### 2. Dockerfile 생성
-프로젝트 루트 디렉터리에 `Dockerfile`을 생성(`nano Dockerfile`)하고 아래 내용을 작성합니다.
-
-#### 1. 기반이 될 파이썬 공식 이미지 지정
-FROM python:3.12
-
-#### 2. 컨테이너 내부에서 명령어가 실행될 작업 디렉터리 설정
-WORKDIR /app
-
-#### 3. 라이브러리 설치를 위해 requirements.txt를 컨테이너로 복사
-COPY requirements.txt .
-
-#### 4. 이미지 빌드 과정에서 파이썬 패키지 설치
-RUN pip install -r requirements.txt
-
-#### 5. 호스트의 현재 디렉터리 파일들을 컨테이너 내부로 전체 복사
-COPY . .
-
-#### 6. 컨테이너가 시작될 때 자동으로 실행될 명령어 설정
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-
-#### 3. 도커 이미지 빌드
-작성한 Dockerfile을 기반으로 빌드를 수행합니다.
-* **빌드 구조:** Dockerfile -> docker build -> django-app (이미지 생성)
-
-#### 이미지 빌드 (-t 옵션 뒤에 이미지 이름 지정, 끝에 점 '.' 필수)
-docker build -t django-app .
-
-#### 생성된 도커 이미지 목록 확인
-docker images
-
----
-
-#### 5.3.3 Django 컨테이너 실행
-빌드된 이미지를 바탕으로 독립된 컨테이너를 구동하고 상태를 관리합니다.
-
-| 작업 내용 | 실행 명령어 | 비고 |
-| :--- | :--- | :--- |
-| **컨테이너 백그라운드 실행** | docker run -d -p 8000:8000 --name django-container django-app | -d: 백그라운드 실행<br>-p: 호스트 8000 포트와 컨테이너 8000 포트 연결 |
-| **실행 중인 컨테이너 확인** | docker ps | 컨테이너 ID, 상태(STATUS), 포트 포워딩 정보 확인 |
-| **컨테이너 로그 확인** | docker logs django-container | Django 서버의 구동 로그 및 실시간 에러 확인 |
-
-
-## 5.4 Nginx, Django 연동 후 실행
-
-### 5.4.1 Nginx 컨테이너 실행
-Nginx가 정상적으로 구동되는지 확인하기 위해 우선 단독으로 컨테이너를 실행합니다.
-
-# Nginx 공식 이미지를 사용해 백그라운드 실행 (호스트 80 포트 연결)
-docker run -d --name nginx -p 80:80 nginx
-
-# 실행 상태 확인
-docker ps
-
----
-
-### 5.4.2 Gunicorn을 통한 연동
-> 💡 **Gunicorn이란?** Django 전용 WAS(Web Application Server)입니다. 보안과 성능을 위해 웹 서버(Nginx)와 파이썬 웹 프레임워크(Django) 사이를 중계하는 역할을 합니다.
-
-* **Gunicorn 설치 및 기록:**
-호스트 가상환경에서 `gunicorn`을 설치하고 `requirements.txt`에 반영합니다.
-
-# 가상환경에서 gunicorn 설치
-pip install gunicorn
-
-# 변경된 패키지 목록을 requirements.txt에 업데이트
-pip freeze > requirements.txt
-
----
-
-### 5.4.3 Django 이미지 빌드
-기존 개발용 `runserver` 대신 `gunicorn`을 실행하도록 `Dockerfile`을 수정하고 이미지를 다시 빌드합니다.
-
-#### 1. Dockerfile 수정 (마지막 CMD 부분 변경)
-# (앞부분은 동일)
-FROM python:3.12
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-
-# 개발 서버(runserver) 대신 gunicorn으로 포트 8000번 구동하도록 수정
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
-
-#### 2. 이미지 빌드
-# 변경된 Dockerfile을 기반으로 django-app 이미지 재빌드
-docker build -t django-app .
-
----
-
-### 5.4.4 Nginx 이미지 빌드
-Django 전용 설정이 적용된 Nginx 이미지를 만들기 위해 별도의 폴더와 설정 파일들을 생성합니다.
-
-#### 1. nginx 설정 파일 작성
-프로젝트 루트에 `nginx` 폴더를 생성하고, 내부에 `default.conf` 파일을 작성합니다.
-mkdir nginx && nano nginx/default.conf
-
-* **nginx/default.conf 내용:**
-upstream django {
-    server django-app:8000;
-}
-
-server {
-    listen 80;
-
-    location / {
-        proxy_pass http://django;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-
-#### 2. Nginx Dockerfile 작성
-`nginx` 폴더 내부에 `Dockerfile`을 생성(`nano nginx/Dockerfile`)하고 아래 내용을 작성합니다.
-
-# Nginx 공식 이미지 사용
-FROM nginx:latest
-
-# 기본 설정 파일을 제거하고 새로 작성한 설정 파일 복사
-RUN rm /etc/nginx/conf.d/default.conf
-COPY default.conf /etc/nginx/conf.d/
-
-#### 3. Nginx 이미지 빌드
-# nginx 폴더로 이동하여 이미지 빌드
-cd nginx
-docker build -t nginx-app .
-cd ..
-
----
-
-### 5.4.5 Django와 Nginx 연동 후 컨테이너 실행
-독립된 두 컨테이너(Django, Nginx)가 서로 통신할 수 있도록 하나의 가상 네트워크 묶어 실행합니다.
-
-| 순서 | 작업 내용 | 실행 명령어 |
-| :--- | :--- | :--- |
-| **1** | **도커 가상 네트워크 생성** | docker network create web-network |
-| **2** | **Django 컨테이너 실행** | docker run -d --name django-app --network web-network django-app |
-| **3** | **Nginx 컨테이너 실행** | docker run -d --name nginx-app --network web-network -p 80:80 nginx-app |
-
-> 📌 **참고:** Django 컨테이너를 실행할 때 `--name django-app`으로 이름을 지정해야 Nginx 설정 파일(`default.conf`)의 `server django-app:8000;` 주소를 통해 도커 내부에서 정상적으로 연결됩니다.
-
-5.5 Nginx, Django, PostgreSQL 컨테이너 연동
-5.6 Nginx, django와 로컬 PostgreSQL 연동
-
-### 5.7 도커 컴포즈를 활용한 컨테이너 실행
-
-#### 5.7.1 도커 컴포즈의 개념
-컨테이너 설정을 파일에 적어두자라는 생각에서 나온 것이 Docker Compose입니다.
-* **Docker Compose 한줄 정의:** 여러 개의 컨테이너를 하나의 YAML 파일로 관리하는 도구
-
----
-
-#### 5.7.2 도커 컴포즈 설치
-```bash
-# 패키지 목록 업데이트
-sudo apt update
-
-# 도커 컴포즈 v2 설치
-sudo apt install -y docker-compose-v2
-
-# 설치 완료 및 버전 확인
-docker compose version
-```
-
-#### 5.7.3 실습 디렉터리 구성
-Docker Compose는 기본적으로 docker-compose.yml 파일을 읽고 컨테이너를 생성합니다.
- ```bash 
-  # 폴더 생성
-      mkdir compose-lab
-      cd compose-lab
-
-   # 파일 생성
-      touch docker-compose.yml
-  ```
-
-
-#### 5.7.4 docker-compose.yml 파일 작성
-
-    ```YAML
-      services:
-
-        nginx:
-
-          image: nginx
-
-          container_name: my-nginx
-
-          ports:
-            - "80:80"
+    # 4. 자바 버전 정상 변경 되었는지 확인
+    java -version
     ```
 
-   * **services :** 컨테이너 목록
-* **nginx :** 서비스 이름
-* **image :** 사용할 이미지
-* **container_name :** 컨테이너 이름
-* **ports :** 포트 연결
+  ---
 
----
+  #### 5.1.2 Spring Boot 프로젝트 생성
+  * **프로젝트 구성 방법:** [Spring Initializr](https://start.spring.io) 공식 사이트 또는 API를 이용하여 프로젝트 빌드 도구(Gradle), 자바 버전(Java 17), 의존성(`Spring Web`)을 설정한 후 웹 애플리케이션의 기본 뼈대 파일들을 생성하고 다운로드합니다.
 
-#### 5.7.5 빌드 및 실행
+  ---
 
-| 순서 | 작업 내용 | 실행 명령어 |
-| :--- | :--- | :--- |
-| **1** | **컨테이너 실행 (백그라운드)** | `docker compose up -d` |
-| **2** | **실행 상태 확인** | `docker ps` |
-| **3** | **컨테이너 중지** | `docker compose stop` |
-| **4** | **컨테이너 및 네트워크 삭제** | `docker compose down` |
+  #### 5.1.3 tree 설치
+  * **tree 란?** 디렉터리 및 파일 구조를 터미널 창에 트리 형태로 한눈에 시각화하여 보여주는 편리한 도구입니다.
+  * **설치 명령어:**
+    ```bash
+    sudo apt install tree -y
+    ```
 
+  ---
+
+  #### 5.1.4 Spring Boot를 실행하기 위한 네트워크 설정
+  스프링 부트 애플리케이션의 기본 가동 포트는 `8080`입니다. 서버를 실행하고 외부 브라우저에서 접속하기 위해 호스트 IP 주소를 확인합니다.
+
+  | 작업 내용 | 실행 명령어 / 파일 경로 | 비고 |
+  | :--- | :--- | :--- |
+  | **Spring Boot 서버 실행** | `./gradlew bootRun` | 프로젝트 루트 폴더로 이동 후 명령어 실행 |
+  | **호스트 IP 주소 확인** | `hostname -I` | 외부 브라우저 접속용 실제 호스트 IP 확인 |
+
+  > 💡 **`hostname -I` 입력 시 IP 주소가 2개 나오는 이유**
+  > 1. **`192.168.xxx.xxx` :** 외부 브라우저나 다른 기기에서 내 우분투 서버로 접속할 때 사용하는 **진짜 호스트 IP**입니다. (`http://192.168.xxx.xxx:8080`)
+  > 2. **`172.17.0.1` :** 도커 엔진 설치 시 자동 생성되는 가상 네트워크 브리지(`docker0`)의 IP로, 도커 컨테이너들의 게이트웨이 역할을 합니다.
+
+ ### 5.2 YAML 기초
+
+  #### 5.2.1 YAML의 개념
+  * **정의:** YAML(YAML Ain't Markup Language)은 사람이 읽고 쓰기 쉽도록 디자인된 데이터 직렬화/설정 파일 형식입니다.
+  * **사용 이유:** 소스 코드 내부에 환경 설정(포트 번호, 데이터베이스 주소 등)을 하드코딩하지 않고, **설정 파일로 깔끔하게 분리하여 관리**하기 위해 사용합니다.
+
+  ---
+
+  #### 5.2.2 Spring Boot의 YAML
+  Spring Boot는 내부에 `SnakeYAML` 라이브러리가 내장되어 있어 별도의 설정 없이 YAML 형식을 기본으로 지원합니다. 따라서 `application.properties` 대신 `application.yml` 파일 하나만 생성하면 직관적인 설정이 가능합니다.
+
+  * **Spring Boot 포트 번호 변경 실습 (8080 ➔ 8081):**
+    ```bash
+    # Spring Boot 프로젝트의 리소스 디렉터리로 이동
+    cd src/main/resources
+
+    # 에디터로 설정 파일 생성 및 편집
+    nano application.yml
+    ```
+  * **`application.yml` 입력 내용:**
+    ```yaml
+    server:
+      port: 8081
+    ```
+
+  ---
+
+  #### 5.2.3 YAML 기본 문법 구조
+
+  1. **Key : Value 구조**
+     * 값과 키 사이에 반드시 **공백(띄어쓰기 한 칸)**이 있어야 합니다.
+     ```yaml
+     name: spring
+     ```
+  2. **계층 구조 (들여쓰기)**
+     * 탭(Tab) 대신 **공백(Space) 2칸 또는 4칸**을 사용하여 부모와 자식 간의 종속 관계를 나타냅니다.
+  3. **배열 (List) 표현**
+     * 하이픈(`-`)과 공백을 사용하여 목록을 나열합니다.
+
+  #### 📄 실제 Spring Boot 종합 설정 예시
+  ```yaml
+  # 1. 톰캣 서버 포트 설정
+  server:
+    port: 8080
+
+  # 2. 애플리케이션 기본 정보 설정
+  spring:
+    application:
+      name: demo
+
+  # 3. 데이터베이스(DB) 연결 설정
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mydb
+    username: postgres
+    password: 1234
+  ```
+
+  5.3 도커를 활용한 Spring Boot 실행
+    5.3.1 도커 호스트에 Spring Boot 프로젝트 생성
+      테스트용 Controller 생성
+        위치 : nano src/main/java/com/example/demo/HelloController.java
+        내용 :
+          ``` java 
+            package com.example.demo;
+
+            import org.springframework.web.bind.annotation.GetMapping;
+            import org.springframework.web.bind.annotation.RestController;
+
+            @RestController
+            public class HelloController {
+            
+                @GetMapping("/")
+                public String hello() {
+                    return "Hello Docker Spring Boot";
+                }
+            }
+        ```
+        확인 : 브라우저에 서버IP:8081
+
+      JAR 파일 생성
+        Docker는 소스코드를 실행하는 것이 아니라 jar 파일을 실행한다.
+
+
+  5.3.2 Spring Boot 이미지 빌드
+
+      Dockerfile 생성 
+        
+        
+
+  
 </details>
       
 
