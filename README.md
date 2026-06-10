@@ -115,20 +115,22 @@
    * Docker 저장소의 보안 인증 및 암호화 키를 다루기 위한 필수 도구입니다.
 4. **Docker GPG Key 등록 :**
    ```bash
-   sudo install -m 0755 -d /etc/apt/keyrings
-   curl -fsSL [https://download.docker.com/linux/ubuntu/gpg](https://download.docker.com/linux/ubuntu/gpg) | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-   sudo chmod a+r /etc/apt/keyrings/docker.gpg
+  sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
   ```
    * 💡 GPG Key란? 패키지 위변조를 방지하기 위해 진짜 Docker 공식 저장소에서 제공하는 안전한 패키지가 맞는지 검증하는 인증서입니다.
+
 5. **Docker Repository 등록 :** *
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] [https://download.docker.com/linux/ubuntu](https://download.docker.com/linux/ubuntu) $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
    * 💡 Repository 등록이란? Ubuntu 시스템의 패키지 매니저(apt)에게 "앞으로 소프트웨어를 다운로드할 때 Docker 공식 저장소 경로도 함께 조회해라"라고 등록해 주는 과정입니다.
+
 6. **패키지 목록 갱신 :** sudo apt update
    * 새로 등록한 Docker 저장소의 최신 패키지 정보를 시스템에 반영합니다.
+
 7. **Docker 엔진종류 최종 설치 :
-  ```bash
     sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  ```
+
 📑 설치되는 핵심 구성 요소 역할:
 * **docker-ce :** 도커 엔진 (실제 컨테이너를 구동하고 백그라운드에서 관리하는 핵심 데몬)
 * **docker-ce-cli :** 도커 명령어 도구 (사용자가 터미널 창에 명령어를 입력할 수 있게 해주는 인터페이스)
