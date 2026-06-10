@@ -359,7 +359,8 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.
 * **컨테이너 고유 IP 부여:** 각 컨테이너는 호스트와 분리된 자신만의 고유한 내부 IP를 가집니다.
   * 컨테이너 실행 예시: `docker run -d --name web nginx`
   * 컨테이너 내부 IP 확인: `docker exec -it web bash` 진입 후 `ip addr` 입력 (결과 예시: 172.17.0.2)
-
+  * docker inspect <컨테이너명> | grep IPAddress
+docker inspect <컨테이너명> | grep IPAddress
 * **도커 네트워크 아키텍처 기본 구조:**
   * 구조 형태: [Ubuntu Host] ➔ [docker0 가상 스위치] ➔ [Container A, B, C]
   * **docker0:** 도커를 설치하면 시스템에 자동으로 생성되는 '가상 네트워크 스위치(브리지)'입니다. (확인 명령어: `ip addr show docker0`)
