@@ -120,7 +120,8 @@
    sudo chmod a+r /etc/apt/keyrings/docker.gpg
   ```
    * 💡 GPG Key란? 패키지 위변조를 방지하기 위해 진짜 Docker 공식 저장소에서 제공하는 안전한 패키지가 맞는지 검증하는 인증서입니다.
-5. **Docker Repository 등록 :** * echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] [https://download.docker.com/linux/ubuntu](https://download.docker.com/linux/ubuntu) $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+5. **Docker Repository 등록 :** *
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] [https://download.docker.com/linux/ubuntu](https://download.docker.com/linux/ubuntu) $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
    * 💡 Repository 등록이란? Ubuntu 시스템의 패키지 매니저(apt)에게 "앞으로 소프트웨어를 다운로드할 때 Docker 공식 저장소 경로도 함께 조회해라"라고 등록해 주는 과정입니다.
 6. **패키지 목록 갱신 :** sudo apt update
    * 새로 등록한 Docker 저장소의 최신 패키지 정보를 시스템에 반영합니다.
