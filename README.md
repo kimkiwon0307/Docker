@@ -734,7 +734,7 @@ ENTRYPOINT ["java","-jar","/app.jar"]
 
 #### 5.5.4 Nginx 이미지 빌드
 1. **파일 준비**: nginx.conf 및 Dockerfile 작성
-2. **이미지 생성**: docker build -t my-nginx:v2 .
+2. **이미지 생성**: docker build -t my-nginx:v2 
 3. **Nginx 실행**: docker run -d --name nginx --network spring-net -p 80:80 my-nginx:v2 
 
 #### 5.5.5 연동 확인 방법
@@ -745,7 +745,50 @@ ENTRYPOINT ["java","-jar","/app.jar"]
 5. **브라우저 확인**: http://서버IP
 
 > **참고**: 실무에서는 각각 실행하지 않고 `docker-compose` 등을 사용하여 한 번에 실행합니다.
-        
+
+
+## 5.6 Docker Compose를 활용한 컨테이너 실행
+
+docker compose up -d 한 줄로 여러 개의 컨테이너를 한 번에 실행하고 관리할 수 있습니다.
+
+### 5.6.1 Docker Compose의 개념
+* 정의: 여러 개의 컨테이너를 하나의 프로젝트처럼 관리하는 도구입니다.
+* 차이점: Docker는 컨테이너 하나를 실행하는 반면, Docker Compose는 프로젝트 전체를 실행합니다.
+* 주요 기능: Image Build, Container 생성, Network 생성, Volume 생성, Environment 설정, Port Mapping
+
+### 5.6.2 Docker Compose 설치
+* sudo apt install docker-compose-plugin -y
+* docker compose version 으로 설치 확인
+
+### 5.6.3 실습 디렉터리 구성
+1. spring-project 폴더 생성
+2. spring-project 안에 spring, nginx 폴더 생성
+3. 기존 spring 파일들을 spring 폴더로 복사
+
+### 5.6.4 docker-compose.yml 작성
+프로젝트 루트 디렉터리에 docker-compose.yml 파일을 작성합니다.
+* services: 실행할 컨테이너 목록
+* build: Dockerfile을 이용해 이미지를 빌드
+* image: Docker Hub에서 이미지를 다운로드
+* ports: 호스트와 컨테이너를 연결
+* depends_on: 실행 순서 보장 (실무에서는 healthcheck와 함께 사용 권장)
+* volumes: DB 데이터 영구 저장 (컨테이너 삭제 시에도 데이터 유지)
+* networks: 컨테이너 간 통신을 위한 네트워크 연결
+
+### 5.6.5 빌드 및 실행
+* 빌드 및 실행: docker compose up -d --build
+* 상태 확인: docker compose ps
+* 로그 확인: docker compose logs spring, docker compose logs nginx, docker compose logs postgres
+* 접속 확인: http://서버IP
+* 종료: docker compose down
+* 다시 실행: docker compose up -d
+
+### 5.6.6 추가 실습
+* 특정 서비스 재시작: docker compose restart spring
+* 로그 실시간 보기: docker compose logs -f spring
+* 컨테이너 내부 접속: docker compose exec spring bash
+* PostgreSQL 접속: docker compose exec postgres psql -U spring -d mydb
+* 이미지 다시 빌드: docker compose up -d --build
 
   
 </details>
