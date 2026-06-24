@@ -652,7 +652,7 @@ COPY build/libs/*.jar app.jar
 ##### 컨테이너 시작 시 실행 명령어
 ENTRYPOINT ["java","-jar","/app.jar"]
 
-4. Docker 이미지 생성 (프로젝트 루트에서 실행)
+3. Docker 이미지 생성 (프로젝트 루트에서 실행)
    docker build -t spring-demo:v1 .
 
 #### 5.3.3 Spring Boot 컨테이너 실행
