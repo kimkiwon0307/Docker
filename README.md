@@ -666,7 +666,86 @@ ENTRYPOINT ["java","-jar","/app.jar"]
 4. 브라우저 확인
    http://서버 IP:8080
 
-                
+### 5.4 Nginx + Spring Boot 연동 후 실행
+
+#### 역할 정의
+* **Nginx**
+    1. 사용자의 요청을 가장 먼저 받는다.
+    2. 정적 파일 제공
+    3. HTTPS(SSL) 처리
+    4. 로드 밸런싱
+    5. Reverse Proxy
+* **Spring Boot**
+    1. 로그인
+    2. 회원가입
+    3. 게시판
+    4. 주문
+    5. DB 처리
+
+#### 5.4.1 Nginx 컨테이너 실행
+1. **Nginx 이미지 다운**: docker pull nginx
+2. **이미지 확인**: docker images
+3. **컨테이너 실행**: docker run -d --name nginx -p 80:80 nginx
+4. **실행 확인**: docker ps
+
+#### 5.4.2 Tomcat을 통한 연동
+1. **Reverse Proxy**: Nginx가 요청을 대신 전달합니다.
+2. **설정**: 필요한 설정 파일을 작성합니다.
+
+#### 5.4.3 Spring Boot 이미지 빌드
+1. **빌드**: ./gradlew build
+2. **이미지 생성**: docker build -t spring-demo:v1 .
+
+#### 5.4.4 Nginx 이미지 빌드
+1. **파일 준비**: nginx 디렉터리에 Dockerfile, nginx.conf 파일을 생성합니다.
+2. **이미지 빌드**: docker build -t my-nginx:v1 .
+
+#### 5.4.5 Nginx와 Spring Boot 연동 후 실행
+1. **네트워크 생성**: docker network create spring-net
+2. **Spring Boot 컨테이너 실행**: docker run -d --name spring-app --network spring-net spring-demo:v1
+3. **Nginx 컨테이너 실행**: docker run -d --name nginx --network spring-net -p 80:80 my-nginx:v1
+
+### 5.5 Nginx + Spring Boot + PostgreSQL 컨테이너 연동
+
+#### 역할 정의
+* **Nginx**: 사용자 요청 수신, Reverse Proxy
+* **Spring Boot**: 비즈니스 로직 처리
+* **PostgreSQL**: 데이터 저장
+
+#### 5.5.1 PostgreSQL 컨테이너 실행
+1. **PostgreSQL 이미지 다운로드**: docker pull postgres:16
+2. **이미지 확인**: docker images
+3. **네트워크 생성**: docker network create spring-net
+4. **네트워크 확인**: docker network ls
+5. **PostgreSQL 실행**: 
+   docker run -d --name postgres --network spring-net -e POSTGRES_DB=mydb -e POSTGRES_USER=spring -e POSTGRES_PASSWORD=1234 -v postgres-data:/var/lib/postgresql/data postgres:16
+6. **실행 확인**: docker ps
+
+#### 5.5.2 Spring Boot, Nginx, PostgreSQL 연동
+1. **DB 설정**: application.properties나 yml 파일에 DB 설정을 추가합니다.
+2. **호스트 정보**: DB 접속 URL 설정 시 localhost가 아닌 **DB 컨테이너 이름(postgres)**을 사용해야 합니다.
+
+#### 5.5.3 Spring Boot 이미지 빌드
+1. **스프링 프로젝트 빌드**: ./gradlew build
+2. **도커파일 작성**
+3. **이미지 생성**: docker build -t spring-demo:v2 .
+4. **Spring Boot 실행**: docker run -d --name spring-app --network spring-net spring-demo:v2
+5. **로그 확인**: docker logs spring-app
+
+#### 5.5.4 Nginx 이미지 빌드
+1. **파일 준비**: nginx.conf 및 Dockerfile 작성
+2. **이미지 생성**: docker build -t my-nginx:v2 .
+3. **Nginx 실행**: docker run -d --name nginx --network spring-net -p 80:80 my-nginx:v2 
+
+#### 5.5.5 연동 확인 방법
+1. **컨테이너 실행 확인**: docker ps (nginx, spring-app, postgres 확인)
+2. **네트워크 확인**: docker network inspect spring-net (세 컨테이너 연결 여부 확인)
+3. **Spring Boot 로그 확인**: docker logs spring-app
+4. **PostgreSQL 연결 확인**: docker exec -it postgres psql -U spring -d mydb
+5. **브라우저 확인**: http://서버IP
+
+> **참고**: 실무에서는 각각 실행하지 않고 `docker-compose` 등을 사용하여 한 번에 실행합니다.
+        
 
   
 </details>
