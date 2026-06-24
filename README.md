@@ -642,15 +642,14 @@ docker inspect <컨테이너명> | grep IPAddress
 
 2. Dockerfile 작성 (프로젝트 루트에 작성)
 
-    # Java 21 공식 이미지 사용
+##### Java 21 공식 이미지 사용
 FROM eclipse-temurin:21-jdk
 
-# (여기에 빈 줄을 추가하여 가독성을 높입니다)
 
-# 빌드한 JAR 파일을 컨테이너 안으로 복사
+##### 빌드한 JAR 파일을 컨테이너 안으로 복사
 COPY build/libs/*.jar app.jar 
 
-# 컨테이너 시작 시 실행 명령어
+##### 컨테이너 시작 시 실행 명령어
 ENTRYPOINT ["java","-jar","/app.jar"]
 
 4. Docker 이미지 생성 (프로젝트 루트에서 실행)
