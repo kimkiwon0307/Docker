@@ -623,37 +623,48 @@ docker inspect <컨테이너명> | grep IPAddress
     password: 1234
   ```
 
-  5.3 도커를 활용한 Spring Boot 실행
-    5.3.1 도커 호스트에 Spring Boot 프로젝트 생성
-      테스트용 Controller 생성
-        위치 : nano src/main/java/com/example/demo/HelloController.java
-        내용 :
-          ``` java 
-            package com.example.demo;
+ ### 5.3 도커를 활용한 Spring Boot 실행
 
-            import org.springframework.web.bind.annotation.GetMapping;
-            import org.springframework.web.bind.annotation.RestController;
+#### 5.3.1 도커 호스트에 Spring Boot 프로젝트 생성
 
-            @RestController
-            public class HelloController {
-            
-                @GetMapping("/")
-                public String hello() {
-                    return "Hello Docker Spring Boot";
-                }
-            }
-        ```
-        확인 : 브라우저에 서버IP:8081
+1. Spring Boot 프로젝트 준비
+2. Spring Boot가 정상 동작하는지 확인
+   ./gradlew bootRun
+3. Controller 추가
+4. 확인
+   curl localhost:8080
 
-      JAR 파일 생성
-        Docker는 소스코드를 실행하는 것이 아니라 jar 파일을 실행한다.
+#### 5.3.2 Spring Boot 이미지 빌드
 
+1. JAR 파일 생성
+   ./gradlew build
+   (Docker는 java 소스코드 대신 JAR 파일을 실행합니다.)
 
-  5.3.2 Spring Boot 이미지 빌드
+2. Dockerfile 작성 (프로젝트 루트에 작성)
+   FROM eclipse-temurin:21-jdk
+   (java 21이 설치된 공식 이미지를 사용합니다.)
+   
+   COPY build/libs/*.jar app.jar
+   (빌드한 JAR 파일을 컨테이너 안으로 복사합니다.)
+   
+   ENTRYPOINT ["java","-jar","/app.jar"]
+   (컨테이너가 시작되면 자동으로 java -jar app.jar을 실행합니다.)
 
-      Dockerfile 생성 
-        
-        
+3. Docker 이미지 생성 (프로젝트 루트에서 실행)
+   docker build -t spring-demo:v1 .
+
+#### 5.3.3 Spring Boot 컨테이너 실행
+
+1. 컨테이너 실행
+   docker run -d --name spring-app -p 8080:8080 spring-demo:v1
+2. 실행 확인
+   docker ps
+3. 로그 확인
+   docker logs spring-app
+4. 브라우저 확인
+   http://서버 IP:8080
+
+                
 
   
 </details>
