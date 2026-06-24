@@ -641,16 +641,19 @@ docker inspect <컨테이너명> | grep IPAddress
    (Docker는 java 소스코드 대신 JAR 파일을 실행합니다.)
 
 2. Dockerfile 작성 (프로젝트 루트에 작성)
-   FROM eclipse-temurin:21-jdk
-   (java 21이 설치된 공식 이미지를 사용합니다.)
-   
-   COPY build/libs/*.jar app.jar
-   (빌드한 JAR 파일을 컨테이너 안으로 복사합니다.)
-   
-   ENTRYPOINT ["java","-jar","/app.jar"]
-   (컨테이너가 시작되면 자동으로 java -jar app.jar을 실행합니다.)
 
-3. Docker 이미지 생성 (프로젝트 루트에서 실행)
+    # Java 21 공식 이미지 사용
+FROM eclipse-temurin:21-jdk
+
+# (여기에 빈 줄을 추가하여 가독성을 높입니다)
+
+# 빌드한 JAR 파일을 컨테이너 안으로 복사
+COPY build/libs/*.jar app.jar 
+
+# 컨테이너 시작 시 실행 명령어
+ENTRYPOINT ["java","-jar","/app.jar"]
+
+4. Docker 이미지 생성 (프로젝트 루트에서 실행)
    docker build -t spring-demo:v1 .
 
 #### 5.3.3 Spring Boot 컨테이너 실행
