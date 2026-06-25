@@ -815,7 +815,7 @@ docker compose up -d 한 줄로 여러 개의 컨테이너를 한 번에 실행�
 * **선언형 관리 (Declarative)**: Deployment 파일에 원하는 상태를 기술하여 관리합니다.
 
 ## 6.2 Kubernetes의 구조
-
+```text
                 Kubernetes Cluster
                        │
       ┌────────────────┴────────────────┐
@@ -831,7 +831,7 @@ Control Plane                     Worker Node
       │                            Service
       │                                 │
       │                          PersistentVolume
-
+```
 ### 6.2.1 Kubernetes Cluster
 * **정의**: 여러 대의 서버를 하나의 시스템처럼 묶은 것입니다.
 * **목적**: 고가용성을 확보하기 위해 사용합니다.
