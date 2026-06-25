@@ -816,21 +816,21 @@ docker compose up -d 한 줄로 여러 개의 컨테이너를 한 번에 실행�
 
 ## 6.2 Kubernetes의 구조
 ```text
-                Kubernetes Cluster
-                       │
-      ┌────────────────┴────────────────┐
-      │                                 │
-Control Plane                     Worker Node
-      │                                 │
-      │                           Deployment
-      │                                 │
-      │                                Pod
-      │                                 │
-      │                         Spring Boot Container
-      │                                 │
-      │                            Service
-      │                                 │
-      │                          PersistentVolume
+                    Kubernetes Cluster
+                           │
+          ┌────────────────┴────────────────┐
+          │                                 │
+    Control Plane                     Worker Node
+          │                                 │
+          │                           Deployment
+          │                                 │
+          │                                Pod
+          │                                 │
+          │                         Spring Boot Container
+          │                                 │
+          │                            Service
+          │                                 │
+          │                          PersistentVolume
 ```
 ### 6.2.1 Kubernetes Cluster
 * **정의**: 여러 대의 서버를 하나의 시스템처럼 묶은 것입니다.
