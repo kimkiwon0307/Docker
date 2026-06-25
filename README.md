@@ -901,6 +901,56 @@ docker compose up -d 한 줄로 여러 개의 컨테이너를 한 번에 실행�
 3. **영구 설정**: `sudo nano /etc/fstab`에서 swap 관련 항목을 주석 처리합니다.
 4. **이유**: 쿠버네티스는 메모리 기반으로 Pod를 관리하므로, Swap이 활성화되면 정확한 메모리 판단이 어렵습니다.
 
+
+## 7.2 Kubernetes 설치
+
+### 목표
+```text
+                                Kubernetes Cluster
+                
+                         +---------------------------+
+                         |     Control Plane         |
+                         |        master             |
+                         +---------------------------+
+                                 /             \
+                                /               \
+                +-------------------------+   +-------------------------+
+                |      Worker Node 1      |   |      Worker Node 2      |
+                |        worker1          |   |        worker2          |
+                +-------------------------+   +-------------------------+
+```
+
+## 7.2.1 모든 노드에 Kubernetes 설치
+
+1. **키 저장 폴더 생성**: `sudo mkdir -p /etc/apt/keyrings`
+2. **GPG 키 다운로드 및 등록**: `curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg`
+3. **저장소 등록**: `echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list`
+4. **패키지 업데이트**: `sudo apt update`
+5. **kubelet, kubeadm, kubectl 설치**: `sudo apt install -y kubelet kubeadm kubectl`
+6. **설치 후 업데이트 버전 고정**: `sudo apt-mark hold kubelet kubeadm kubectl`
+
+### 주요 구성 요소 설명
+* **kubelet**: Node에서 실행되는 에이전트입니다.
+* **kubeadm**: 클러스터를 만드는 도구이며, 이 명령으로 Control Plane을 생성합니다.
+* **kubectl**: 관리자가 사용하는 명령어로, 클러스터를 관리할 때 사용합니다.
+
+7.2.2 Master Node 설정
+    1) 클러스터 생성 : sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+    2) 위 값은 Flannel에서 많이 사용하는 예시이다.
+    3) kubectl 설정
+    4) 설정 파일을 저장할 폴더 생성 : mkdir -p $HOME/.kube
+    5) 클러스터 관리자 권한 파일을 내 폴더로 복사 : sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
+    6) 복사된 파일의 소유권을 현재 사용자로 변경 : sudo chown $(id -u):$(id -g) $HOME/.kube/config
+    7) Pod 네트워크 설치 : kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+    8) kubectl get nodes 
+
+7.2.3 Worker Node 설정
+    1) sudo kubeadm join 192.168.111.137:6443 --token d9oqz9.quzwq5vr5xxrqjc8 \
+        --discovery-token-ca-cert-hash sha256:e651c7e941a691e0feb44ea61713b2a28ff6a821bcd9daa0138d6da3437b986e 
+    2) 확인 kubectl get nodes
+
+7.2.4 Kubernetes로 실행하는 Hello World
+    1) 도커에서는 docker run nignx 를 사용했는데 쿠버네티스에서는 kubectl create deployment hello --image=nginx를 사용한다.
 </details>
 
 
