@@ -860,7 +860,48 @@ docker compose up -d 한 줄로 여러 개의 컨테이너를 한 번에 실행�
 * **차이점**: Docker의 Volume 대신 Kubernetes에서는 PV와 PVC를 사용합니다.
 </details>
 
+<details>
 
+<summary><kbd>📁 7장. Kubernetes 실습 환경 구축 </kbd></summary> 
+
+## 7.1 사전 준비 사항
+
+### 7.1.1 가상 머신 복제
+* **목표**: 최종적으로 master, worker1, worker2 총 3대의 서버가 필요합니다.
+
+### 7.1.2 호스트 이름 변경
+1. **명령어**: `sudo hostnamectl set-hostname <호스트이름>` (master, worker1, worker2 각각 적용)
+2. **확인**: `hostname` 명령어로 변경된 이름 확인
+3. **참고**: 쿠버네티스에서는 호스트 이름이 그대로 노드 이름으로 등록됩니다.
+
+### 7.1.3 IP 주소 변경
+* 각 서버는 서로 겹치지 않는 고유한 IP 주소를 할당받아야 합니다.
+
+### 7.1.4 DNS 설정
+1. **파일 수정**: `sudo nano /etc/hosts`
+2. **내용**: 서버 IP와 호스트네임을 매핑하여 추가합니다.
+3. **확인**: `ping <호스트네임>` 명령어로 통신 확인
+
+### 7.1.5 UFW 방화벽 설정
+1. **비활성화**: `sudo ufw disable` (학습 환경 기준)
+2. **확인**: `sudo ufw status`
+
+### 7.1.6 네트워크 설정
+* 노드 간 `ping` 테스트를 통해 상호 통신이 정상적으로 이루어지는지 확인합니다.
+
+### 7.1.7 containerd 설정
+1. **디렉토리 생성**: `sudo mkdir -p /etc/containerd`
+2. **설정 생성**: `containerd config default | sudo tee /etc/containerd/config.toml`
+3. **설정 수정**: `config.toml` 파일에서 `SystemdCgroup` 값을 `false`에서 `true`로 변경합니다.
+4. **목적**: kubelet과 containerd가 동일한 cgroup 드라이버를 사용하도록 동기화합니다.
+
+### 7.1.8 swap 비활성화
+1. **확인**: `free -h`, `swapon --show`
+2. **비활성화**: `sudo swapoff -a`
+3. **영구 설정**: `sudo nano /etc/fstab`에서 swap 관련 항목을 주석 처리합니다.
+4. **이유**: 쿠버네티스는 메모리 기반으로 Pod를 관리하므로, Swap이 활성화되면 정확한 메모리 판단이 어렵습니다.
+
+</details>
 
 
 
