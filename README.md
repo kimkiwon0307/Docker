@@ -814,9 +814,52 @@ docker compose up -d 한 줄로 여러 개의 컨테이너를 한 번에 실행�
 * **서비스 관리**: Service 기능을 통해 항상 일정한 주소를 제공하여 안정적인 통신을 보장합니다.
 * **선언형 관리 (Declarative)**: Deployment 파일에 원하는 상태를 기술하여 관리합니다.
 
+## 6.2 Kubernetes의 구조
 
+                Kubernetes Cluster
+                       │
+      ┌────────────────┴────────────────┐
+      │                                 │
+Control Plane                     Worker Node
+      │                                 │
+      │                           Deployment
+      │                                 │
+      │                                Pod
+      │                                 │
+      │                         Spring Boot Container
+      │                                 │
+      │                            Service
+      │                                 │
+      │                          PersistentVolume
 
+### 6.2.1 Kubernetes Cluster
+* **정의**: 여러 대의 서버를 하나의 시스템처럼 묶은 것입니다.
+* **목적**: 고가용성을 확보하기 위해 사용합니다.
+
+### 6.2.2 Control Plane
+* **정의**: 클러스터의 '두뇌' 역할을 하는 관리자입니다.
+* **주요 역할**: Pod 생성/삭제, 스케줄링, 상태 확인, 노드 관리, API 제공
+* **내부 구성**: API Server, Scheduler, Controller Manager, etcd
+
+### 6.2.3 Node
+* **정의**: 실제로 컨테이너를 실행하는 서버입니다.
+* **주요 기능**: Pod 실행, 이미지 다운로드, 네트워크 연결, 볼륨 연결 등 실제 작업 수행
+
+### 6.2.4 Workload
+* **정의**: 쿠버네티스에서 실행되는 애플리케이션입니다.
+* **예시**: Spring Boot, Nginx, Redis 등
+* **실무 유형**: Pod, Deployment, StatefulSet, DaemonSet, Job, CronJob 등
+
+### 6.2.5 Network
+* **특징**: 모든 Pod는 고유한 IP를 가지지만, 재생성 시 IP가 변경됩니다.
+* **Service**: IP 변경 문제 해결을 위해 항상 일정한 주소를 제공하여 안정적인 통신을 보장합니다.
+
+### 6.2.6 Storage
+* **정의**: 컨테이너 삭제 시에도 데이터를 영구 보존하기 위한 저장소입니다.
+* **구성**: Spring Boot → PersistentVolumeClaim(PVC) → PersistentVolume(PV) → Disk
+* **차이점**: Docker의 Volume 대신 Kubernetes에서는 PV와 PVC를 사용합니다.
 </details>
+
 
 
 
