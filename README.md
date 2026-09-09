@@ -96,6 +96,68 @@
   * 실행 중인 컨테이너를 강제로 삭제하기 : ` docker rm -f my-nginx `
   * Container ID로 작업하기 : ` docker stop Container ID ` -> ` docker rm Container ID `
 
+* **2.2.4 컨테이너를 외부에 노출**
+  * 도커 네트워크는 기본적으로 격리되어 있다.
+  * Nginx는 컨테이너 내부에서 80번 포트를 사용하지만, Host PC의 80번 포트와 자동으로 연결되는 것은 아니다.
+  * 해결 방법: Port Mapping (`-p` 옵션)
+    * 명령어 형식 : `docker run -p 호스트포트:컨테이너포트 이미지이름`
+    * 실행 예시 : `docker run -d -p 8080:80 nginx`
+
+* **2.2.5 컨테이너 애플리케이션 구축**
+  * Docker에서 애플리케이션을 실행하는 개념을 알아보자.
+  * 컨테이너는 단순히 Linux를 실행하는 것이 목적이 아니라 **Application 실행**이다.
+  * Nginx 애플리케이션 : Nginx 이미지를 실행하면 컨테이너 안에서 Nginx가 동작한다.
+  * Docker Image를 만들 때 필요한 실행 환경을 함께 패키징한다.
+  * Docker 컨테이너는 하나의 주요 애플리케이션 또는 프로세스를 실행하기 위한 독립적인 환경으로 구성하는 것이 좋다.
+  * 각 애플리케이션을 독립적으로 관리할 수 있다.
+
+* **2.2.6 Docker 볼륨**
+  * 컨테이너 내부에만 데이터를 저장하면 컨테이너 삭제 시 데이터가 함께 사라질 수 있으므로 Volume을 사용한다.
+  * **Docker Volume이란?** : Docker 컨테이너의 데이터를 컨테이너 외부에 안전하게 저장하는 방법이다.
+  * Volume을 사용하면 컨테이너를 삭제해도 Docker Volume에 데이터가 유지된다.
+  * Docker Volume 생성 : `docker volume create my-volume`
+  * Docker Volume 목록 확인 : `docker volume ls`
+  * 컨테이너에 Volume 연결 : `docker run -v 볼륨이름:컨테이너경로 이미지이름`
+    * Nginx 예시 : `docker run -d --name nginx-volume -v my-volume:/usr/share/nginx/html nginx` (Nginx의 HTML 파일을 Volume에 영구 저장 가능)
+  * PostgreSQL에서 더 현실적인 예제 : 데이터가 지속적으로 유지되어야 하므로 일반적으로 Volume을 연결하여 사용한다.
+    * 명령어 예시 : `docker run -d --name postgres-db -e POSTGRES_PASSWORD=1234 -v postgres-data:/var/lib/postgresql/data postgres`
+
+* **2.2.7 도커 네트워크**
+  * 왜 Docker Network가 필요할까? 하나의 서비스는 여러 개의 컨테이너로 구성되는 경우가 많으며, 이 컨테이너들끼리 서로 통신하기 위해 네트워크가 필요하다.
+  * **Docker Network의 기본 개념** : Docker 컨테이너들을 연결하는 가상의 네트워크 공간이다.
+  * Docker Network 목록 확인 : `docker network ls`
+  * 기본 네트워크 종류 : 
+    * `bridge` (가장 많이 사용되는 기본 네트워크)
+    * `host` (컨테이너가 Host의 네트워크를 직접 사용하는 방식)
+    * `none` (네트워크 연결이 없는 고립된 방식)
+  * 사용자 정의 Network 만들기 : 
+    * 생성 : `docker network create spring-network`
+    * 확인 : `docker network ls`
+  * 컨테이너를 Network에 연결하여 실행 : `docker run -d --name spring-app --network spring-network spring-demo:v1`
+  * 컨테이너 이름으로 통신 : Spring Boot 등에서 데이터베이스에 연결할 때 `localhost`를 사용하면 안 된다. `localhost`는 컨테이너 자신을 의미하므로, 다른 컨테이너와 통신할 때는 **컨테이너 이름**을 사용해야 한다.
+  * 네트워크 상세 정보 확인 : `docker network inspect spring-network`
+  * 네트워크 핵심 정리 : Docker Network = 컨테이너끼리 통신하는 공간
+
+* **2.2.8 컨테이너 로깅**
+  * 컨테이너에서 발생하는 애플리케이션 로그를 확인하는 방법이다.
+  * 기본 로그 확인 : `docker logs 컨테이너이름`
+  * 실시간 로그 보기 : `docker logs -f spring-app`
+  * 최근 로그만 보기 : `docker logs --tail 100 spring-app`
+  * 로그 발생 시간 확인 : `docker logs -t spring-app`
+  * 실무에서 자주 사용하는 조합 명령어 : `docker logs -f --tail 100 spring-app`
+  * 로그의 흐름 : 애플리케이션이 표준 출력(stdout/stderr)으로 내보내는 로그를 Docker가 수집하여 제공한다.
+
+* **2.2.9 컨테이너 자원 할당 제한**
+  * 컨테이너가 사용할 수 있는 CPU와 메모리(RAM) 자원을 제한하는 방법이다.
+  * 메모리 제한 : `docker run -d --name spring-app --memory="512m" spring-demo:v1` (최대 메모리 512MB 제한)
+  * CPU 제한 : `docker run -d --name spring-app --cpus="1.0" spring-demo:v1` (최대 CPU 1코어 제한)
+  * CPU + Memory 동시 제한 : `docker run -d --name spring-app --memory="512m" --cpus="1.0" spring-demo:v1`
+  * 실행 중인 컨테이너의 실시간 자원 사용량 확인 : `docker stats` 또는 `docker stats spring-app`
+  * 참고: 실제 운영 환경(Kubernetes 등)에서는 나중에 YAML 파일로 이러한 자원 설정을 관리하게 된다.
+ 
+ 
+
+
 </ details >
 
 
