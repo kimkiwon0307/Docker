@@ -182,8 +182,43 @@
   * **Image Registry란? :** 도커 이미지를 저장하는 공간 (`Docker Hub`, `Private Registry` 등)
   * **배포 과정 :** 태그 생성(`docker tag spring-demo:v1 myname/spring-demo:v1`) -> 업로드(`docker push myname/spring-demo:v1`)
   * **이미지 다운 및 실행 :** `docker pull myname/spring-demo:v1` -> 실행(`docker run -d --name spring-app -p 8080:8080 myname/spring-demo:v1`)
-   
-   
+
+### 2.4 Dockerfile
+
+* **2.4.1 이미지를 생성하는 방법**
+  * **`docker commit` :** 실행 중인 컨테이너를 이미지로 만드는 방법 (`docker commit spring-app spring-demo:v2`)
+  * **`Dockerfile` 사용 :** Docker 이미지를 만드는 과정을 적어놓은 설명서
+  * **`Dockerfile`의 장점 :** 재현 가능, 자동화, Git으로 관리 가능
+
+* **2.4.2 Dockerfile 작성**
+  * **가장 기본적인 Dockerfile :** 프로젝트 최상위 디렉터리에 `Dockerfile`을 만든다.
+  * **`FROM` :** `FROM eclipse-temurin:21-jre` (Java 21 실행 환경을 기본 이미지로 사용한다.)
+  * **`WORKDIR` :** `WORKDIR /app` (컨테이너 내부의 작업 디렉터리를 지정한다. 이후 명령어는 기본적으로 `/app`에서 실행된다.)
+  * **`COPY` :** `COPY build/libs/*.jar app.jar` (현재 PC의 JAR 파일을 컨테이너 내부로 복사한다.)
+  * **`EXPOSE` :** `EXPOSE 8080` (컨테이너가 8080 포트를 사용하는 애플리케이션이라는 것을 나타낸다.)
+  * **`ENTRYPOINT` :** `ENTRYPOINT ["java", "-jar", "app.jar"]` (컨테이너가 시작될 때 실행할 명령어이다.)
+
+* **2.4.3 Dockerfile 빌드**
+  * **이미지 빌드 :** `docker build -t spring-demo:v1 .`
+  * **이미지 확인 :** `docker images`
+  * **컨테이너 실행 :** `docker run -d --name spring-app -p 8080:8080 spring-demo:v1`
+  * **확인 :** `docker ps`
+  * **로그 :** `docker logs spring-app`
+
+* **2.4.4 기타 Dockerfile 명령어**
+  * **`RUN` :** 이미지를 만드는 과정에서 명령어를 실행한다 (`RUN apt-get update`).
+  * **`CMD` :** 컨테이너가 실행될 때 기본 명령어를 지정한다 (`CMD ["java", "-jar", "app.jar"]`).
+  * **`CMD` vs `ENTRYPOINT` :** `CMD`는 기본 명령어, `ENTRYPOINT`는 컨테이너의 실행 명령을 뜻한다.
+  * **`ENV` :** 환경 변수를 설정한다 (`ENV SERVER_PORT=8080`).
+  * **`ARG` :** 이미지를 빌드할 때 사용할 변수를 정의한다 (`ARG VERSION=1.0`).
+  * **`USER` :** 컨테이너 내부에서 실행할 사용자를 지정한다 (`USER spring`).
+
+* **2.4.5 Dockerfile로 빌드할 때 주의할 점**
+  * Build Context를 조심해야 한다.
+  * 필요 없는 파일은 `.dockerignore`에 작성하여 도커 이미지 빌드 과정에 포함되지 않도록 한다.
+  * 이미지 크기를 줄이기 위해 노력해야 한다.
+  * Docker Layer Cache를 고려해야 한다.
+  * 포트 설정이 올바른지 확인해야 한다.
  
 
 
