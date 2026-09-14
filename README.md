@@ -154,7 +154,36 @@
   * CPU + Memory 동시 제한 : `docker run -d --name spring-app --memory="512m" --cpus="1.0" spring-demo:v1`
   * 실행 중인 컨테이너의 실시간 자원 사용량 확인 : `docker stats` 또는 `docker stats spring-app`
   * 참고: 실제 운영 환경(Kubernetes 등)에서는 나중에 YAML 파일로 이러한 자원 설정을 관리하게 된다.
- 
+
+### 2.3 도커 이미지
+
+* **2.3.1 도커 이미지 생성**
+  * **도커 이미지란? :** 컨테이너를 실행하기 위한 템플릿(설계도)
+  * **이미지와 컨테이너의 관계 :** 도커 이미지(붕어빵틀), 도커 컨테이너(붕어빵), 하나의 이미지로 여러 개의 컨테이너를 만들 수 있다.
+  * **이미지를 만드는 방법 :** 기존 이미지 가져오기(`docker pull nginx`), `Dockerfile`로 직접 만들기
+  * **이미지 확인 :** `docker images` 또는 `docker image ls`
+
+* **2.3.2 이미지 구조 이해**
+  * 도커 이미지는 하나의 파일처럼 보이지만 실제로는 여러 개의 레이어로 구성된다.
+  * **왜 Layer 구조를 사용할까요? :** 도커의 장점은 변하지 않은 부분을 재사용할 수 있다는 것이다.
+  * **이미지와 컨테이너의 차이 :** 컨테이너가 실행되면 이미지 위에 쓰기 가능 레이어가 추가된다. (이미지 + 쓰기레이어 = 컨테이너)
+  * **이미지 레이어 확인하기 :** `docker history spring-demo:v1`
+  * **태그(tag)란? :** 보통 `이미지이름:태그` 형식으로 붙이며, 태그를 이용해서 이미지 버전을 관리한다.
+
+* **2.3.3 이미지 추출**
+  * 도커 이미지를 파일로 저장하는 방법이다.
+  * **이미지 저장하기 :** `docker save -o 파일이름.tar 이미지이름:태그` (예시: `docker save -o spring-demo-v1.tar spring-demo:v1`)
+  * **확인 :** `ls -lh spring-demo-v1.tar`
+  * **이미지 불러오기 :** `docker load -i spring-demo-v1.tar`
+  * **확인 :** `docker images`
+
+* **2.3.4 이미지 배포**
+  * 도커 이미지를 다른 서버에서도 사용할 수 있도록 배포해보기
+  * **Image Registry란? :** 도커 이미지를 저장하는 공간 (`Docker Hub`, `Private Registry` 등)
+  * **배포 과정 :** 태그 생성(`docker tag spring-demo:v1 myname/spring-demo:v1`) -> 업로드(`docker push myname/spring-demo:v1`)
+  * **이미지 다운 및 실행 :** `docker pull myname/spring-demo:v1` -> 실행(`docker run -d --name spring-app -p 8080:8080 myname/spring-demo:v1`)
+   
+   
  
 
 
