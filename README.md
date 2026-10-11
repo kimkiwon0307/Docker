@@ -42,7 +42,9 @@ Docker Engine은 Container를 실제로 관리하는 핵심 프로그램이다.
 
 </details>
 
-# 2장 도커 엔진
+<details>
+<summary><b> 2장 도커 엔진</b></summary>
+
 
 ## Image와 Container
 1. Image는 Container를 만들기 위한 읽기 전용 템플릿이다. 
@@ -313,7 +315,7 @@ Docker Engine은 Container를 실제로 관리하는 핵심 프로그램이다.
 30. docker build -t myimage:v1 . 에서 마지막 . 은 무엇인가요?
 - **정답:** 현재 디렉터리를 Docker Build Context로 사용한다는 뜻입니다.
 
-
+</details>
 
 
 
