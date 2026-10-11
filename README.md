@@ -317,18 +317,146 @@ Docker Engine은 Container를 실제로 관리하는 핵심 프로그램이다.
 
 </details>
 
+<details>
+<summary><b> 3장 Docker Swarm </b></summary>
 
+## Docker Swarm 이란?
+1. Docker만 단독으로 사용하면 보통 한 서버 안의 Container를 관리한다.
+2. 서버가 여러 대가 되면 직접 Container를 하나씩 관리하기 어려워진다.
+3. 이 여러 서버를 묶어서 하나의 Cluster처럼 관리하는 것이 Docker Swarm이다.
+4. Docker Swarm은 여러 Docker 서버의 Container를 배치,확장,복구하는 Orchestration 기능이다.
 
+## Node / Manager / Worker
+1. Swarm에 참여하는 서버 한 대를 Node라고 한다.
+2. Node는 크게 Manager와 Worker로 나뉜다.
 
+## Manager Node
+1. Manager는 Cluster를 관리한다.
+2. Manager : Service 생성, 상태 관리, Worker에 Task 배치, Desired State 유지
+3. Manager는 지시하고 관리하는 서버이다.
 
+## Worker Node
+1. Worker는 Manager가 배정한 작업을 실제로 실행한다.
+2. Manager → Task 전달 → Worker → Container 실행
+3. Worker는 실제 Container를 실행하는 서버이다.
 
+## Service / Task / Replica
+1. Service는 어떤 Container를 몇 개 실행할지 정의한 것이다.
+2. nginx Service
+   Image = nginx
+   Replicas = 3
+3. Swarm이 Container 3개를 Cluster에 배치한다.
 
+## Replica
+1. Replica는 원하는 실행 개수이다.
+2. replicas = 3 이면 Container가 3개가 실행되도록 유지한다.
 
+## Task
+1. Task는 Service가 Node에 실제로 배정한 하나의 작업 단위이다.
 
+## Desired State
+1. Desired State는 사용자가 원하는 상태이다.
+2. Desired State와 Current State를 비교해서 맞춰나간다.
+3. 이 개념은 Kubernetes에서도 등장한다.
 
+## Service 생성과 Scale
+1. docker service create --name web --replicas 3 nginx
+2. docker service ls : Service 확인
+3. docker service ps web : Task 확인
+4. docker service scale web=5 : Replica 증감
 
+## 장애 자동 복구
+1. Swarm의 장점 중 하나는 Container 하나가 죽어도 원하는 개수를 자동으로 복구할 수 있다.
 
+## Rolling Update
+1. 기존 Container를 점진적으로 새 버전 Container로 교체
 
+## Rollback
+1. 이전 정상 버전으로 되돌리기
+
+## Node Drain
+1. 어떤 Woker 서버를 점검해야 할 때 Node를 Drain 상태로 둘 수 있다.
+2. Drain = 해당 Node를 유지보수하기 위해 Service Task 배치 대상에서 제외
+
+## 확인문제
+## Docker Swarm 확인문제
+
+1. Docker Swarm이란 무엇인가요?
+- **정답:** 여러 Docker 서버를 하나의 Cluster처럼 묶어 Container를 배치, 확장, 복구하는 Orchestration 기능입니다.
+
+2. Node란 무엇인가요?
+- **정답:** Docker Swarm Cluster에 참여하는 서버 한 대를 의미합니다.
+
+3. Manager Node의 역할은 무엇인가요?
+- **정답:** Cluster 상태를 관리하고 Service와 Task를 제어하며 Worker Node에 작업을 배치합니다.
+
+4. Worker Node의 역할은 무엇인가요?
+- **정답:** Manager가 배정한 Task를 받아 실제 Container를 실행합니다.
+
+5. Service란 무엇인가요?
+- **정답:** 어떤 Image를 사용해 Container를 몇 개 실행할지 정의한 Swarm의 관리 단위입니다.
+
+6. Replica란 무엇인가요?
+- **정답:** Service에서 원하는 Container의 실행 개수를 의미합니다.
+
+7. Task란 무엇인가요?
+- **정답:** Service에 의해 Node에 실제로 배정되는 하나의 실행 작업 단위입니다.
+
+8. Desired State란 무엇인가요?
+- **정답:** 사용자가 원하는 최종 상태를 의미하며, Swarm은 현재 상태를 Desired State에 맞추도록 계속 조정합니다.
+
+9. replicas=3인데 Container 하나가 죽으면 어떻게 되나요?
+- **정답:** Swarm이 현재 개수가 부족한 것을 감지하고 새 Task와 Container를 생성하여 다시 3개를 유지합니다.
+
+10. docker service create --name web --replicas 3 nginx는 무엇을 의미하나요?
+- **정답:** web이라는 이름의 Service를 만들고 nginx Image 기반 Container를 3개 유지하도록 설정한다는 의미입니다.
+
+11. Service 목록을 확인하는 명령은 무엇인가요?
+- **정답:** docker service ls입니다.
+
+12. 특정 Service의 Task 상태를 확인하는 명령은 무엇인가요?
+- **정답:** docker service ps 서비스이름입니다.
+
+13. Service의 Replica 개수를 변경하는 것을 무엇이라고 하나요?
+- **정답:** Scale이라고 합니다.
+
+14. Service를 3개에서 5개로 늘리려면 어떤 식으로 명령할 수 있나요?
+- **정답:** docker service scale web=5 같은 형식으로 사용할 수 있습니다.
+
+15. Rolling Update란 무엇인가요?
+- **정답:** 기존 Container를 한꺼번에 모두 교체하지 않고 새 버전으로 점진적으로 교체하는 방식입니다.
+
+16. Rolling Update를 사용하는 이유는 무엇인가요?
+- **정답:** 업데이트 중 서비스 중단 가능성을 줄이기 위해 사용합니다.
+
+17. Rollback이란 무엇인가요?
+- **정답:** 새 버전에 문제가 발생했을 때 이전 정상 버전으로 되돌리는 것입니다.
+
+18. Node Drain이란 무엇인가요?
+- **정답:** 특정 Node를 유지보수하기 위해 Service Task 배치 대상에서 제외하는 상태입니다.
+
+19. Node Drain은 언제 사용하나요?
+- **정답:** 서버 점검, 재부팅, 패치, 장애 대응 등으로 특정 Node에서 작업을 빼야 할 때 사용합니다.
+
+20. Docker Swarm에서 자동 복구가 가능한 이유는 무엇인가요?
+- **정답:** Swarm이 Desired State와 Current State를 계속 비교하고 차이가 있으면 필요한 Task를 다시 생성하기 때문입니다.
+
+21. Docker 단독 실행과 Docker Swarm의 차이는 무엇인가요?
+- **정답:** Docker 단독 실행은 주로 한 서버의 Container를 직접 관리하고, Swarm은 여러 서버를 Cluster로 묶어 Container를 자동 배치하고 관리합니다.
+
+22. Manager와 Worker의 차이를 한 줄로 설명하면?
+- **정답:** Manager는 Cluster를 관리하고 작업을 배치하며, Worker는 실제 Container를 실행합니다.
+
+23. Service, Task, Container의 관계는 무엇인가요?
+- **정답:** Service가 원하는 실행 상태를 정의하고, 그에 따라 Task가 Node에 배정되며, Task를 통해 실제 Container가 실행됩니다.
+
+24. Swarm의 Desired State 개념은 Kubernetes에서 어떤 개념과 연결되나요?
+- **정답:** ReplicaSet이나 Controller가 원하는 Pod 개수를 유지하는 Desired State 개념과 연결됩니다.
+
+25. Docker Swarm의 Rolling Update는 Kubernetes의 어떤 기능과 연결되나요?
+- **정답:** Kubernetes Deployment의 Rolling Update와 연결됩니다.
+
+</details>
 
 
 
