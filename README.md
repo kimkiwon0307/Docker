@@ -553,6 +553,221 @@ volumes:
 **20. 프로젝트의 Docker 단계에서 Compose를 어떻게 활용할 수 있나요?**
 - **정답:** nginx, Spring Boot, MySQL 같은 여러 Container를 Network와 Volume까지 포함해 하나의 compose.yaml로 구성하고 실행할 수 있습니다.
 
+</details>
+
+<details>
+<summary><b> 5장 Kubernetes 설치 </b></summary>
+
+## Kubernetes 설치 환경의 종류
+1. 로컬 학습용 : Minikube, Docker Desktop
+2. 직접 구축 : kubeadm
+3. Cloud 자동화 :  kops
+4. Managed Kubernetes : GKE, EKS, AKS
+5. 같은 Kubernetes를 어떤 방식으로 설치,운영 하느냐가 다르다.
+6. Node는 Kubernetes Cluster에 참여한는 서버 한 대이다.
+7. Control Plane도 Node이고 Worker도 Node이다.
+
+## Kubernetes 버전 선택
+1. 1.37.1
+2. 1 은 Major, 37은 Minor, 1은 Patch
+
+## 주요 도구
+1. kubeadm : Cluster 생성 / Worker join : Cluster 구축
+2. kubelet : 각 Node에서 Pod를 관리하는 Agent : Node 관리
+3. Kubelctl : 사용자가 Kubernetes에 명령하는 CLI : 사용자 명령
+
+## 개발 용도의 Kubernetes 설치
+1. Docker Desktop, Minikube
+2. Minikube는 로컬에서 Kubernetes Cluster를 쉽게 만들어 학습,개발할 수 있게 해주는 도구
+
+## 여러 서버로 구성된 Kubernetes Cluster
+1. 로컬 단일 환경이 아니라 여러 서버를 하나의 Cluster로 묶는 방식
+2. control-plane, worker1, worker2
+
+## kubeadm
+1.  VM 3대 준비
+2.  control-plane, worker1, worker2
+
+## containerd
+1. Kubernetes가 Container를 실제로 실행하려면 Container Runtime이 필요하다.
+2. containerd를 사용했다.
+3. Kubernetes → kubelet → containerd → Container
+
+## Control Plane 핵심 구성요소
+
+## kube-apiserver 
+1. Kubernetes의 중심 요청 창구
+2. kubectl → API Server → Kubernetes
+3. 대부분의 Kubernetes 요청이 API Server를 통한다.
+
+## etcd 
+1. Cluster 상태를 저장하는 데이터베이스
+2. 어떤 Node가 있는지, 어떤 Pod가 있는지, 원하는 상태가 무엇인지 같은 Cluster 정보를 저장
+
+## kube-scheduler 
+1. 새 Pod를 어느 Node에서 실행할지 결정
+
+## kube-controller-manager
+1. 원하는 상태와 현재 상태를 계속 맞춤
+
+## Worker Node의 Kubelet
+1. 각 Node에서는 Kubelet이 동작한다.
+2. Kubelet은 자신의 Node에서 Pod가 원하는 상태로 실행되도록 관리한다.
+3. API Server → kubelet → containerd → Pod / Container
+
+## Flannel과 CNI
+1. 처음 Cluster를 만들었을 때 Node가 NotReady 상태였다.
+2. 그 이유 중 하나가 pod Network가 아직 구성되지 않았기 때문이다.
+3. 그래서 Flannel을 설치했다.
+4. Kubernetes Pod Network를 구성하는 CNI Plugin
+
+## Node Network와 Pod Network
+1. Node → 192.168.111.x
+2. Pod → 10.244.x.x
+3. 별도의 Network를 사용
+
+## CoreDNS
+1. Kubernetes 내부 DNS 역할을 한다.
+2. Kubernetes 안에서 이름으로 Service나 Pod 관련 대상을 찾을 수 있도록 도와준다.
+
+## kube-proxy
+1. kube-proxy는 각 Node에서 Service Traffic이 Pod 쪽으로 전달될 수 있도록 네트워크 규칙을 관리한다.
+2. Service 통신을 도와주는 네트워크 구성요소
+
+## DaemonSet 
+1. 각 Node마다 Pod 하나씩 실행하도록 하는 방식을 DaemonSet이라고한다.
+
+## kops
+1. AWS 같은 Cloud에서 인프라 생성과 Kubernetes Cluster 구축을 더 넓게 자동화하는 도구
+2. kubeadm : 서버를 내가 먼저 준비, Kubernetes 설치
+3. kops : Cloud 인프라 생성까지 더 많이 자동화
+
+## GKE
+1. Google Kubernetes Engine
+2. 구글이 제공하는 Managed Kubernetes
+
+## 확인 문제
+
+**1. Kubernetes 설치 방식이 여러 개라는 것은 Kubernetes 종류가 여러 개라는 뜻인가요?**
+- **정답:** 아닙니다. 같은 Kubernetes를 어떤 방식으로 설치하고 운영하느냐가 다른 것입니다.
+
+**2. Node란 무엇인가요?**
+- **정답:** Kubernetes Cluster에 참여하는 서버 한 대를 의미합니다.
+
+**3. Minikube란 무엇인가요?**
+- **정답:** 로컬 환경에서 Kubernetes Cluster를 쉽게 만들어 학습이나 개발에 사용할 수 있게 해주는 도구입니다.
+
+**4. kubeadm이란 무엇인가요?**
+- **정답:** Linux 서버에 Kubernetes Cluster를 직접 생성하고 Worker Node를 Join시키는 데 사용하는 공식 도구입니다.
+
+**5. kubelet의 역할은 무엇인가요?**
+- **정답:** 각 Node에서 Pod가 원하는 상태로 실행되도록 관리하는 Agent입니다.
+
+**6. kubectl의 역할은 무엇인가요?**
+- **정답:** 사용자가 Kubernetes API Server에 명령을 전달하는 CLI 도구입니다.
+
+**7. kubeadm, kubelet, kubectl을 한 줄씩 구분하면?**
+- **정답:**
+  - kubeadm = Cluster 구축
+  - kubelet = Node의 Pod 관리
+  - kubectl = 사용자 명령
+
+**8. Kubernetes 버전에서 1.37.1은 어떻게 구분하나요?**
+- **정답:** 1은 Major, 37은 Minor, 1은 Patch입니다.
+
+**9. Version Skew란 무엇인가요?**
+- **정답:** Kubernetes 구성요소 간에 허용되는 버전 차이를 의미합니다.
+
+**10. 우리가 kubeadm 실습에서 만든 Cluster 구성은 어떻게 되었나요?**
+- **정답:** Control Plane 1대와 Worker Node 2대로 총 3 Node Cluster를 구성했습니다.
+
+**11. Control Plane의 역할은 무엇인가요?**
+- **정답:** Kubernetes Cluster의 전체 상태와 배포, 스케줄링, API 요청 등을 관리합니다.
+
+**12. kube-apiserver의 역할은 무엇인가요?**
+- **정답:** kubectl과 다른 Kubernetes 구성요소의 요청을 받는 중앙 API 창구입니다.
+
+**13. etcd란 무엇인가요?**
+- **정답:** Kubernetes Cluster의 상태와 설정 정보를 저장하는 Key-Value 데이터베이스입니다.
+
+**14. kube-scheduler의 역할은 무엇인가요?**
+- **정답:** 새 Pod를 어떤 Node에서 실행할지 결정합니다.
+
+**15. kube-controller-manager의 역할은 무엇인가요?**
+- **정답:** 현재 상태와 원하는 상태를 비교하고 원하는 상태가 유지되도록 조정합니다.
+
+**16. Kubernetes에서 Container를 실제로 실행하는 Runtime으로 우리는 무엇을 사용했나요?**
+- **정답:** containerd를 사용했습니다.
+
+**17. kubelet과 containerd의 관계는 무엇인가요?**
+- **정답:** kubelet이 Node에서 Pod 실행을 관리하고 containerd가 실제 Container를 실행합니다.
+
+**18. Flannel은 무엇인가요?**
+- **정답:** Kubernetes Pod Network를 구성하는 CNI Plugin입니다.
+
+**19. CNI란 무엇인가요?**
+- **정답:** Kubernetes에서 Pod Network를 구성하기 위한 네트워크 인터페이스 규격과 Plugin 체계입니다.
+
+**20. Flannel을 설치하기 전에 Node가 NotReady였던 이유 중 하나는 무엇인가요?**
+- **정답:** Pod Network가 아직 구성되지 않았기 때문입니다.
+
+**21. 우리가 설정한 Pod Network 대역은 무엇이었나요?**
+- **정답:** 10.244.0.0/16이었습니다.
+
+**22. Node Network와 Pod Network는 같은 대역을 사용하나요?**
+- **정답:** 아닙니다. 우리 환경에서는 Node는 192.168.111.x 대역, Pod는 10.244.x.x 대역을 사용했습니다.
+
+**23. CoreDNS의 역할은 무엇인가요?**
+- **정답:** Kubernetes 내부에서 이름 기반 통신을 가능하게 하는 DNS 역할을 합니다.
+
+**24. kube-proxy의 역할은 무엇인가요?**
+- **정답:** Service Traffic이 적절한 Pod로 전달될 수 있도록 각 Node의 네트워크 규칙을 관리합니다.
+
+**25. DaemonSet이란 무엇인가요?**
+- **정답:** 특정 Pod를 각 Node마다 하나씩 실행하도록 하는 Kubernetes 오브젝트입니다.
+
+**26. kube-flannel과 kube-proxy가 각 Node마다 하나씩 실행된 이유는 무엇인가요?**
+- **정답:** DaemonSet 방식으로 배포되기 때문입니다.
+
+**27. kubeadm init은 무엇을 하나요?**
+- **정답:** Control Plane을 초기화하고 Kubernetes Cluster를 생성합니다.
+
+**28. kubeadm join은 무엇을 하나요?**
+- **정답:** Worker Node를 기존 Kubernetes Cluster에 참여시킵니다.
+
+**29. 6443 포트는 주로 어떤 구성요소와 관련되나요?**
+- **정답:** Kubernetes API Server와 관련된 포트입니다.
+
+**30. crictl은 어떤 용도로 사용했나요?**
+- **정답:** containerd 같은 CRI Runtime의 Container 상태와 로그를 직접 확인하는 데 사용했습니다.
+
+**31. kops란 무엇인가요?**
+- **정답:** AWS 같은 Cloud에서 인프라 생성과 Kubernetes Cluster 구축을 더 넓게 자동화하는 도구입니다.
+
+**32. kubeadm과 kops의 차이는 무엇인가요?**
+- **정답:** kubeadm은 준비된 서버에 Kubernetes를 구축하고, kops는 Cloud 인프라 생성까지 더 넓게 자동화합니다.
+
+**33. kops의 State Store로 AWS에서 사용할 수 있는 대표적인 서비스는 무엇인가요?**
+- **정답:** Amazon S3입니다.
+
+**34. GKE란 무엇인가요?**
+- **정답:** Google이 제공하는 Managed Kubernetes 서비스인 Google Kubernetes Engine입니다.
+
+**35. kubeadm과 GKE의 가장 큰 차이는 무엇인가요?**
+- **정답:** kubeadm은 사용자가 Cluster를 직접 구축하고 관리하지만, GKE는 Google이 Control Plane 등 많은 관리 작업을 대신합니다.
+
+**36. AWS와 Azure의 Managed Kubernetes 서비스는 각각 무엇인가요?**
+- **정답:** AWS는 EKS, Azure는 AKS입니다.
+
+**37. Minikube, kubeadm, kops, GKE를 한 줄씩 구분하면?**
+- **정답:**
+  - Minikube = 로컬 학습용
+  - kubeadm = 직접 Cluster 구축
+  - kops = Cloud 인프라 + Kubernetes 구축 자동화
+  - GKE = Google Managed Kubernetes
+
+**38. 5장에서 가장 중요한 실습 경험은 무엇이었나요?**
+- **정답:** kubeadm으로 Control Plane 1대와 Worker 2대의 3 Node Kubernetes Cluster를 직접 구축하고 모두 Ready 상태까지 만든 것입니다.
 
 
 
@@ -562,8 +777,6 @@ volumes:
 
 
 </details>
-
-
 
 
 
