@@ -491,66 +491,67 @@ volumes:
 
 ## 확인문제
 
-1. Docker Compose란 무엇인가요?
+[4장 Docker Compose - 확인문제 + 정답]
+
+**1. Docker Compose란 무엇인가요?**
 - **정답:** 여러 Container로 구성된 애플리케이션을 하나의 YAML 파일로 정의하고 함께 실행·관리하는 도구입니다.
 
-2. Docker Compose를 사용하는 이유는 무엇인가요?
+**2. Docker Compose를 사용하는 이유는 무엇인가요?**
 - **정답:** 여러 Container를 각각 docker run으로 실행하지 않고 하나의 설정 파일로 일괄 관리하기 위해 사용합니다.
 
-3. Compose 파일에서 services는 무엇인가요?
+**3. Compose 파일에서 services는 무엇인가요?**
 - **정답:** 실행할 Container들을 정의하는 영역입니다.
 
-4. docker compose up -d는 무엇을 하나요?
+**4. docker compose up -d는 무엇을 하나요?**
 - **정답:** Compose 파일에 정의된 Container들을 생성하고 백그라운드로 실행합니다.
 
-5. docker compose ps는 무엇을 하나요?
+**5. docker compose ps는 무엇을 하나요?**
 - **정답:** Compose로 실행한 Container들의 상태를 확인합니다.
 
-6. docker compose stop과 start의 역할은 무엇인가요?
+**6. docker compose stop과 start의 역할은 무엇인가요?**
 - **정답:** stop은 Container를 중지하고, start는 중지된 Container를 다시 실행합니다.
 
-7. docker compose down은 무엇을 하나요?
+**7. docker compose down은 무엇을 하나요?**
 - **정답:** Compose로 생성한 Container와 Network 등을 정리합니다.
 
-8. docker compose down -v는 무엇이 다른가요?
+**8. docker compose down -v는 무엇이 다른가요?**
 - **정답:** Container와 Network뿐 아니라 Volume까지 삭제합니다.
 
-9. DB를 사용하는 환경에서 docker compose down -v를 조심해야 하는 이유는 무엇인가요?
+**9. DB를 사용하는 환경에서 docker compose down -v를 조심해야 하는 이유는 무엇인가요?**
 - **정답:** DB 데이터가 저장된 Volume까지 삭제되어 데이터가 사라질 수 있기 때문입니다.
 
-10. Docker Compose에서 Container끼리는 어떻게 통신할 수 있나요?
+**10. Docker Compose에서 Container끼리는 어떻게 통신할 수 있나요?**
 - **정답:** Compose가 만든 Network 안에서 Service 이름을 이용해 서로 통신할 수 있습니다.
 
-11. Compose에서 Container IP보다 Service 이름을 사용하는 이유는 무엇인가요?
+**11. Compose에서 Container IP보다 Service 이름을 사용하는 이유는 무엇인가요?**
 - **정답:** Container IP는 변경될 수 있지만 Service 이름은 설정에서 안정적으로 사용할 수 있기 때문입니다.
 
-12. Compose의 Network 기능은 Docker의 어떤 개념과 연결되나요?
+**12. Compose의 Network 기능은 Docker의 어떤 개념과 연결되나요?**
 - **정답:** User-defined Docker Network와 Docker DNS 개념과 연결됩니다.
 
-13. Compose에서 Volume을 사용하는 이유는 무엇인가요?
+**13. Compose에서 Volume을 사용하는 이유는 무엇인가요?**
 - **정답:** Container가 삭제되어도 DB 데이터나 필요한 파일을 유지하기 위해 사용합니다.
 
-14. MySQL에서 /var/lib/mysql에 Volume을 연결하는 이유는 무엇인가요?
+**14. MySQL에서 /var/lib/mysql에 Volume을 연결하는 이유는 무엇인가요?**
 - **정답:** MySQL의 실제 데이터가 저장되는 경로이기 때문입니다.
 
-15. Compose에서 build 옵션은 무엇을 의미하나요?
+**15. Compose에서 build 옵션은 무엇을 의미하나요?**
 - **정답:** 지정한 경로의 Dockerfile을 이용해 Image를 Build하고 그 Image로 Container를 실행한다는 뜻입니다.
 
-16. image와 build의 차이는 무엇인가요?
+**16. image와 build의 차이는 무엇인가요?**
 - **정답:** image는 기존 Image를 사용하고, build는 Dockerfile을 이용해 새로운 Image를 Build해서 사용합니다.
 
-17. nginx, Spring Boot, MySQL을 Compose로 구성한다면 각각 무엇이 되나요?
+**17. nginx, Spring Boot, MySQL을 Compose로 구성한다면 각각 무엇이 되나요?**
 - **정답:** 각각 하나의 Service로 정의할 수 있습니다.
 
-18. Dockerfile과 Docker Compose의 차이는 무엇인가요?
+**18. Dockerfile과 Docker Compose의 차이는 무엇인가요?**
 - **정답:** Dockerfile은 하나의 Image를 만드는 방법을 정의하고, Docker Compose는 여러 Container의 실행 구성을 정의합니다.
 
-19. Docker Compose와 Docker Swarm의 차이는 무엇인가요?
+**19. Docker Compose와 Docker Swarm의 차이는 무엇인가요?**
 - **정답:** Compose는 주로 한 Host에서 여러 Container 애플리케이션을 구성하고, Swarm은 여러 Docker 서버를 Cluster로 묶어 Container를 오케스트레이션합니다.
 
-20. 프로젝트의 Docker 단계에서 Compose를 어떻게 활용할 수 있나요?
+**20. 프로젝트의 Docker 단계에서 Compose를 어떻게 활용할 수 있나요?**
 - **정답:** nginx, Spring Boot, MySQL 같은 여러 Container를 Network와 Volume까지 포함해 하나의 compose.yaml로 구성하고 실행할 수 있습니다.
-
 
 
 
