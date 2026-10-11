@@ -1,228 +1,317 @@
-<details>
-<summary><h2>1장 도커란?</h2></summary>
+# 1장 도커란?
 
----
+## Docker와 Container
+VM은 각각 자기 Guest OS와 Kernel을 가진다.
+Container는 Host의 Kernel을 공유한다.
+Container가 VM보다 가볍고 빠르게 시작되고 자원 사용량이 적다 라는 장점이 있다.
+VM은 OS 자체를 분리하는 데 강하다
+Container는 애플리케이션 실행 환경을 격리하는 데 강하다.
 
-### 1.1 가상 머신과 도커 컨테이너
+## Docker는 왜 사용할까?
+Docker를 사용하면 애플리케이션과 필요한 실행환경을 Image로 묶어서 실행할 수 있다.
+환경 차이를 줄이고 애플리케이션을 일관되게 실행하기 위해 Docker를 사용한다.
 
-* **가상 머신이란?**
-  * 하나의 물리 서버 안에 여러 개의 가상 컴퓨터를 만드는 기술
-  * **강한 독립성:** 다른 VM에 영향을 주지 않음
-  * 서로 다른 OS 사용 가능
-  * **단점:** 시스템 자원 낭비 발생
+## Docker Engine
+Docker Engine은 Container를 실제로 관리하는 핵심 프로그램이다.
+사용자 → docker 명령어 → Docker Engine → Image / Container / Network / Volume 관리 흐름으로 동작한다.
 
-* **컨테이너의 등장**
-  * 가상 머신보다 가볍고 빠름
-  * 가장 큰 차이는 컨테이너마다 OS 전체를 설치하지 않는다는 점
-  * 컨테이너는 Host OS의 커널을 공유함
-  * **비유:** 가상 머신은 각각의 독립된 집을 짓는 것이고, 컨테이너는 하나의 큰 건물 안에 여러 개의 독립된 공간을 만드는 것과 비슷함
+## 확인 문제
+1. VM과 Container의 가장 큰 차이는 무엇인가요?
+답: VM은 각각 Guest OS와 Kernel을 가지지만, Container는 Host의 Kernel을 공유합니다.
+2. Container가 VM보다 일반적으로 가벼운 이유는 무엇인가요?
+답: 별도의 Guest OS 없이 Host Kernel을 공유하기 때문에 시작이 빠르고 자원 사용량이 적습니다.
+3. Docker를 사용하는 대표적인 이유를 하나 말해보세요.
+답: 애플리케이션과 필요한 실행 환경을 Image로 묶어 개발환경과 운영환경의 차이를 줄이고 일관되게 실행하기 위해 사용합니다.
+4. Docker Engine은 무슨 역할을 하나요?
+답: Container, Image, Network, Volume 등을 생성하고 관리하는 Docker의 핵심 프로그램입니다.
+5. Container마다 독립된 Guest OS가 있나요?
+답: 아니요. Container는 Host의 Kernel을 공유하며 일반적으로 별도의 Guest OS를 가지지 않습니다.
 
-* **도커(Docker)**
-  * 컨테이너를 쉽게 만들고 관리할 수 있도록 도와주는 도구
+# 2장 도커 엔진
 
----
+## Image와 Container
+1. Image는 Container를 만들기 위한 읽기 전용 템플릿이다. 
+2. Container는 Image를 기반으로 생성된 실제 실행 환경이다.
+3. Image는 Read only, Container는 Image + Writable Layer 이다.
 
-### 1.2 도커를 시작해야 하는 이유
+## create / start / run
+1. docker create는 Container를 생성만 한다. docker create --name web01 nginx
+2. docker start는 container를 실행 한다. docker start web01
+3. docker run은 생성과 실행을 한다. docker run -d --name web01 nginx
 
-* **1.2.1 애플리케이션의 개발과 배포가 편해진다.**
-  * 애플리케이션과 실행 환경을 함께 묶을 수 있음
-  * 개발 환경, 테스트 환경, 운영 환경을 최대한 동일하게 구축 가능
+## Container 상태 확인
+1. 실행 중인 Container : docker ps
+2. 실행 중 + 정지된 Container : docker ps -a
 
-* **1.2.2 여러 애플리케이션의 독립성과 확장성이 높아진다.**
-  * 각 애플리케이션을 독립적인 컨테이너로 실행 가능
-  * 시스템 확장 및 관리가 용이해짐
+## Port Mapping
+1. Container 안에서 nginx가 80포트로 실행되고 있어도, Host 밖에서 바로 접근할 수 있는 건 아니다.
+2. docker run -d --name web01 -p 8080:80 nginx
+3. Host 8080 → Container 80 → nginx
+4. -p HostPort:ContainerPort
 
-* **1.2.3 Docker를 통해 컨테이너 기술을 쉽게 학습할 수 있다.**
-  * 컨테이너 기술 자체는 Docker만의 기술이 아님
-  * 복잡한 컨테이너 기술을 직관적인 명령어로 쉽게 사용할 수 있게 지원
+## docker exec
+1. 실행 중인 Container 안에서 명령을 실행하고 싶을 때 사용한다.
+2. docker exec web01 nginx -v : web01 Container에서 nginx -v를 실행하는 것이다.
+3. docker exec -it web01 /bin/bash : Shell로 들어가기
+4. docker exec : 실행 중인 Container 선택, 그 안에서 명령 실행
+5. -it : i는 입력을 받을 수 있게, t는 터미널 형태로 사용
+6. docker exec -it 컨테이너이름 /bin/bash
 
----
+## Volume
+1. Container 내부에 데이터를 저장하면 기본적으로 그 데이터는 Container의 Writable Layer에 저장된다.
+2. Container 자체를 삭제하면 Writable Layer도 같이 사라질 수 있다. DB 데이터나 업로드 파일처럼 계속 보존해야 하는 데이터는 Volme을 사용한다.
+3. Volume은 Container의 생명주기와 데이터를 분리해서, Container를 삭제해도 데이터를 유지할 수 있게 해주는 저장공간이다.
+4. Contaienr → (mount) → volume(데이터유지)
+5. docker run -d --name mysql01 -v mysql-data:/var/lib/mysql mysql
+6. mysql-data : Docker Volume 이름, /var/lib/mysql : Container 내부 경로
+7. -v Volume이름:Container경로
+8. 데이터가 Container와 Volume 양쪽에 복사되는 게 아니라 Volume을 바라보는 Mount Point가 된다.
+9. 보존해야 하는 애플리케이션 데이터가 실제 저장되는 경로에 Volume을 Mount한다.
 
-### 1.3 도커 엔진 설치
+## Volume 종류
+1. Named Volume : 이름을 직접 지정 : -v mysql-data:/var/lib/mysql
+2. Anonymous Volume : 이름을 직접 지정하지 않는다. : -v /var/lib/mysql : Docker가 임의의 이름을 만들어 관리
+3. Bind Mount : Host의 실제 디렉터리를 Container에 연결 : -v /home/ubuntu/data:/data
 
-* **1.3.1 Docker Engine의 종류 및 버전**
-  * **Docker Engine이란?** Docker를 실제로 실행하는 핵심 프로그램 (`docker run`, `docker ps`, `docker images` 등)
-  * **Docker Engine 구성 요소:**
-    * **Docker CLI:** 사용자가 명령어를 입력하는 인터페이스 부분
-    * **Docker Daemon:** Docker의 핵심 백그라운드 프로세스
-    * **Docker API:** Docker CLI와 Docker Daemon 사이의 통신을 담당
+## Volume 기본 명령
+1. docker volume ls : Volume 목록
+2. docker volume create mysql-data : Volume 생성
+3. docker volume inspect mysql-data : volme 상세 확인
+4. docker volume rm mysql-data : 삭제
 
-</details>
+## Container 삭제와 Volume
+1. Container를 삭제하더라고 Volume은 유지
+2. 새 Container를 만들어 같은 Volume을 다시 연결하면 기존 데이터를 다시 사용할 수 있다.
+
+## Docker Network
+1. Container끼리 통신하려면 네트워크가 필요하다.
+2. 같은 네트워크에서 Container들 끼리 통신할 때 IP를 직접 몰라도 된다. : docker exec web curl app
+3. Container 이름으로 접근할 수 있다.
+4. Docker가 같은 네트워크 안에서 이름을 IP로 바꿔주는 DNS 기능을 제공하기 때문이다.
+5. Container IP는 재생성되면 바뀔 수 있다. 그래서 이름을 사용한다.
+
+## Docker Network 기본 명령
+1. docker network ls : Network 목록
+2. docker network inspect app-net : 상세 확인
+3. docker network create app-net : 생성
+4. docker network rm app-net : 삭제
+
+## 기본 bridge와 User-defined bridge
+1. Docker 설치 후 기본적으로 bridge Network가 있다.
+2. 같은 User-defined Network에 있는 Container끼리는 이름으로 통신할 수 있다.
+
+## 로그 확인
+1. docker logs 컨테이너이름
+2. docker logs -f web01 : 실시간 보기
+
+## Resource 확인
+1. Container도 CPU와 Memory를 사용한다.
+2. docker stats : 현재 사용량 확인
+
+## CPU / Memory 제한
+1. Container가 Host 자원을 너무 많이 사용하지 못하도록 제한할 수도 있다.
+2. docker run -d --name limit-test --cpus="0.5" --memory="128m" nginx
+
+## inspect 
+1. Container의 상세 설정을 보고 싶을 때
+2. docker inspect web01
+3. Network 설정, IP, Volume, 환경변수, Resource 제한, Container 상태 등을 볼 수 있다.
+
+## Docker Image 관리
+1. docker images 또는 docker image ls
+2. docker pull nginx:latest : Registry에서 image 가져오기
+3. docker rmi nginx:latest : Image 삭제
+
+## docker run과 pull 관계
+1. docker run nginx 를 실행하면 Docker 가 먼저 Image가 있는지 확인한다.
+2. 로컬 Image 없음 → Registry에서 pull → Container 생성 → 실행
+
+## Image Layer
+1. Image는 보통 여러 Layer로 구성된다.
+2. docker history nginx : 어떤 Layer들로 구성됐는지 확인할 때 사용
+
+## docker commit
+1. nginx Image → Container 생성 → Container 내부 파일 수정
+2. 변경된 Container 상태를 새로운 Image로 만들 수 있다.
+3. docker commit web01 my-nginx:v1
+4. 실무에서는 재현성과 자동화 때문에 Dockerfile을 사용한다.
+
+## Image를 파일로 저장
+1. Image를 tar 파일로 내보낼 수 있다.
+2. docker save -o my-nginx.tar my-nginx:v1
+3. docker load -i my-nginx.tar
+
+## Registry와 Image
+1. Docker Hub 같은 Registry를 사용하면 Image를 원격 저장소에 올리고 내려받을 수 있다.
+2. 내 pc → (push) → Registry → (pull) → 다른 서버
+3. docker push 이미지이름
+4. docker pull 이미지이름
+
+## Image Tag
+1. nginx:1.26
+2. nginx : Image 이름
+3. 1.26 : Tag
+4. Tag는 Image의 버전이나 변형을 구분할 때 사용
+
+## Dockerfile
+1. Docker Image를 어떻게 만들지 코드로 적어놓은 파일
+2. Dockrfile은 무슨 Base Image를 썼는지? 어떤 파일을 복사했는지, 어떤 명령을 실행했는지, 어떤 프로그램을 실행할지 를 코드로 남길 수 있다.
+
+## 기본 구조
+1. FROM nginx:latest
+   COPY index.html /usr/share/nginx/html/
+2. nginx Image를 기반으로 index.html을 Image 안으로 복사해서 새 Image 생성
+3. Image Build : docker build -t my-nginx:v1 .
+4. docker build : Image Build, -t my-nginx:v1 : Image 이름과 Tag, . : 현재 디렉터리를 Build Context로 사용
+
+## FROM
+1. FROM nginx:latest
+2. 어떤 Image를 기반으로 새 Image를 만들 것인가?
+
+## COPY
+1. COPY index.html /usr/share/nginx/html/
+2. 현재 Build Context의 index.html을 Image 내부 /usr/share/nginx/html로 복사한다.
+
+## RUN
+1. RUN apt-get update
+2. RUN은 Image를 Build하는 도중에 실행되는 명령이다.
+3. RUN = Build 시점
+
+## CMD
+1. CMD는 Container가 실행될 때 사용할 기본 명령이나 인자이다.
+2. CMD ["nginx", "-g", "daemon off;"]
+
+## ENTRYPOINT
+1. ENTRYPOINT는 Container에서 실행할 주 프로그램을 고정하는 용도
+2. ENTRYPOINT ["ping"]
+   CMD ["localhost"]
+3. 기본으로 Container를 실행하면 ping localhost가 된다.
+4. ENTRYPOINT : 주 실행 프로그램
+5. CMD : 기본 명령/인자
+
+## WORKDIR
+1. WORKDIR /app
+2. 이후 Dockerfile 명령들이 작업할 기본 디렉터리를 지정
+
+## ENV
+1. 환경변수를 설정
+2. ENV APP_ENV=production
+
+## EXPOSE
+1. EXPOSE 80
+2. 이 Container가 보통 80번 Port를 사용한다는 정보를 기록
+
+## ADD
+1. ADD도 파일을 Image에 넣을 수 있다.
+2. 일반적인 파일 복사는 COPY를 우선 사용
+3. ADD는 tar 자동 압축 해제 같은 추가 기능이 있기 때문에 특별한 이유가 있을 때 사용한다.
+
+## 확인문제
+1. Docker Image란 무엇인가요?
+답: Container를 생성하기 위한 읽기 전용 템플릿입니다.
+
+2. Docker Container란 무엇인가요?
+답: Image를 기반으로 생성되어 실제 애플리케이션 프로세스가 실행되는 격리된 실행 환경입니다.
+
+3. Container 안에서 파일을 수정하면 원본 Image도 수정되나요?
+답: 아니요. Image는 읽기 전용이고 변경사항은 Container의 Writable Layer에 기록됩니다.
+
+4. docker create, docker start, docker run의 차이는 무엇인가요?
+답: create는 Container 생성, start는 생성된 Container 실행, run은 쉽게 생성과 실행을 함께 수행한다고 이해하면 됩니다.
+
+5. docker ps와 docker ps -a의 차이는 무엇인가요?
+답: docker ps는 실행 중인 Container를 보여주고, docker ps -a는 정지된 것을 포함한 모든 Container를 보여줍니다.
+
+6. -p 8080:80의 의미는 무엇인가요?
+답: Host의 8080번 Port로 들어온 요청을 Container의 80번 Port로 전달한다는 의미입니다.
+
+7. 실행 중인 Container 내부에서 명령을 실행하려면 무엇을 사용하나요?
+답: docker exec를 사용합니다. Shell 접속은 보통 docker exec -it 컨테이너명 /bin/bash 형태로 사용합니다.
+
+8. Docker Volume을 사용하는 이유는 무엇인가요?
+답: Container와 데이터의 생명주기를 분리하여 Container를 삭제해도 필요한 데이터를 유지하기 위해 사용합니다.
+
+9. -v mysql-data:/var/lib/mysql에서 각각 무엇을 의미하나요?
+답: mysql-data는 Docker Volume 이름이고, /var/lib/mysql은 Container 내부의 Mount 경로입니다.
+
+10. Named Volume과 Bind Mount의 차이는 무엇인가요?
+답: Named Volume은 Docker가 저장 위치를 관리하고, Bind Mount는 사용자가 Host의 특정 디렉터리를 직접 지정합니다.
+
+11. 같은 User-defined Docker Network에 있는 Container끼리는 어떻게 통신할 수 있나요?
+답: Docker DNS를 이용해 Container 이름으로 서로 통신할 수 있습니다.
+
+12. 같은 Docker Network 내부의 Container끼리 통신할 때 반드시 -p가 필요한가요?
+답: 아니요. -p는 주로 Host에서 Container로 접근할 때 사용하며, 같은 Network의 Container끼리는 내부 Network로 직접 통신할 수 있습니다.
+
+13. Container 로그를 확인하는 명령은 무엇인가요?
+답: docker logs 컨테이너명입니다. 실시간으로 보려면 docker logs -f 컨테이너명을 사용합니다.
+
+14. Container의 CPU와 Memory 사용량을 확인하는 명령은 무엇인가요?
+답: docker stats입니다.
+
+15. Container의 상세 설정을 확인하는 명령은 무엇인가요?
+답: docker inspect 컨테이너명입니다.
+
+16. Container의 CPU와 Memory를 제한하려면 어떤 옵션을 사용할 수 있나요?
+답: CPU는 --cpus, Memory는 --memory 옵션을 사용할 수 있습니다.
+
+17. Registry에서 Image를 가져오는 명령은 무엇인가요?
+답: docker pull입니다.
+
+18. Image를 삭제하는 명령은 무엇인가요?
+답: docker rmi입니다.
+
+19. docker save/load와 docker push/pull의 차이는 무엇인가요?
+답: save/load는 Docker Image와 tar 파일 사이에서 사용하고, push/pull은 Local Image와 Registry 사이에서 사용합니다.
+
+20. Docker Image의 Tag는 무엇인가요?
+답: Image의 버전이나 변형을 구분하기 위한 값입니다. 예를 들어 nginx:1.26에서 1.26이 Tag입니다.
+
+21. docker commit은 무엇인가요?
+답: 변경된 Container의 현재 상태를 새로운 Image로 만드는 명령입니다.
+
+22. 실무에서 docker commit보다 Dockerfile이 중요한 이유는 무엇인가요?
+답: Image를 만드는 과정이 코드로 기록되므로 재현성, 변경 이력 관리, 자동화에 유리하기 때문입니다.
+
+23. Dockerfile의 FROM은 무엇인가요?
+답: 새로운 Image를 만들 때 사용할 Base Image를 지정합니다.
+
+24. COPY는 무엇인가요?
+답: Build Context의 파일이나 디렉터리를 Image 내부로 복사합니다.
+
+25. RUN과 CMD의 차이는 무엇인가요?
+답: RUN은 Image를 Build할 때 실행되고, CMD는 Container가 시작될 때 사용할 기본 명령이나 인자를 지정합니다.
+
+26. ENTRYPOINT와 CMD의 차이를 간단히 설명하면?
+답: ENTRYPOINT는 주 실행 프로그램을 지정하고, CMD는 기본 명령이나 기본 인자를 지정하는 데 주로 사용합니다.
+
+27. WORKDIR은 무엇인가요?
+답: 이후 Dockerfile 명령들이 실행될 기본 작업 디렉터리를 지정합니다.
+
+28. ENV는 무엇인가요?
+답: Image나 Container에서 사용할 환경변수를 설정합니다.
+
+29. EXPOSE 80을 쓰면 Host의 80번 Port가 자동으로 열리나요?
+답: 아니요. EXPOSE는 Container가 사용하는 Port 정보를 나타내는 역할이고, 실제 Port Mapping은 -p로 설정합니다.
+
+30. docker build -t myimage:v1 . 에서 마지막 . 은 무엇인가요?
+답: 현재 디렉터리를 Docker Build Context로 사용한다는 뜻입니다.
 
 
-<details> 
-<summary> <h2> 02장 도커 엔진 </h2> </summary>
-
----
-
-### 2.1 도커 이미지와 컨테이너
-* 소스코드 -> Image -> Container 이 흐름을 이해하는 것이 Docker의 시작이다.
-* **2.1.1 도커 이미지**
-  * Docker 이미지는 컨테이너를 만들기 위한 실행 가능한 템플릿(설계도)이다.
-  * **비유로 이해하기:** 이미지는 붕어빵 틀이다. (이미지는 원본 템플릿이고 컨테이너는 실제로 만들어진 실행 결과물이다.)
-  * 도커 이미지 확인하기 : ` docker images ` 또는 ` docker image ls `
-  * 항목 : REPOSITORY(이미지이름), TAG(이미지 버전), IMAGE ID(이미지 식별자), CREATED(생성 시간), SIZE(이미지 크기)
-  * Image 이름과 Tag : ` nginx:latest ` = 이미지이름:버전
-  * Docker Hub에서 이미지 다운로드 : Docker는 필요한 이미지를 다운로드해서 사용할 수 있다.
-  * Docker Hub란? : Docker 이미지를 저장하고 공유하는 이미지 레지스트리이다.
-* **2.1.2 Docker Container**
-  * Docker Container는 Docker 이미지를 실제로 실행한 상태이다.
-  * 컨테이너 실행 : ` docker run hello-world ` (내 pc에 이미지가 있으면 컨테이너 생성, 없으면 hub에서 다운로드 후 컨테이너 생성 후 실행)
-  * Nginx 컨테이너 실행 : ` docker run nginx ` (이렇게 실행하면 현재 터미널이 컨테이너 로그에 연결될 수 있어서 보통 백그라운드로 실행한다: ` docker run -d nginx `)
-  * 실행 중인 컨테이너 확인 : ` docker ps ` (IMAGE는 어떤 이미지를 사용했는지 보여주고, CONTAINER ID는 실행된 컨테이너를 구분하는 ID이다)
-  * 모든 컨테이너 확인 : ` docker ps -a ` (실행이 종료된 컨테이너까지 모두 확인한다)
-  * Image 하나로 여러 Container 실행 가능하다.
-  * 컨테이너 이름 지정하기 : ` docker run -d --name web-server nginx `
-  * 컨테이너 중지하기 : ` docker stop web-server ` 또는 ` docker stop Container ID `
-  * 중지된 컨테이너 다시 실행하기 : ` docker start web-server ` (` docker run `은 새로운 컨테이너 생성이고 ` start `는 기존 컨테이너 다시 실행이다)
-  * 컨테이너 삭제 : ` docker stop web-server ` 후 ` docker rm web-server `
-
----
-
-### 2.2 도커 컨테이너 다루기
-* **2.2.1 컨테이너 생성**
-  * 컨테이너를 생성하고 실행하는 명령어 : ` docker run 이미지이름 `
-  * ` docker run `은 컨테이너를 생성하고 실행한다는 뜻이다.
-  * hello-world 실행 : ` docker run hello-world ` (Docker가 hello-world 이미지를 다운로드하고 컨테이너를 실행한다)
-  * 백그라운드에서 컨테이너 실행하기 : ` docker run -d nginx ` (`-d`는 detached mode : 터미널과 분리해서 백그라운드 실행한다는 의미)
-  * 컨테이너 이름 지정하기 : ` docker run -d --name my-nginx nginx `
-* **2.2.2 컨테이너 목록 확인**
-  * ` docker ps `는 현재 실행 중인 컨테이너만 보여준다.
-  * CONTAINER ID (컨테이너 식별 번호), IMAGE(사용한 이미지), COMMAND(컨테이너 실행 명령), CREATED(생성 시간), STATUS(현재 상태), PORTS(포트 정보), NAMES(컨테이너 이름)을 확인할 수 있다.
-  * 모든 컨테이너 확인 : ` docker ps -a ` 또는 ` docker container ls -a `
-  * 컨테이너 상태 이해하기 : Created(생성됨), Up(실행 중), Exited(종료됨)
-* **2.2.3 컨테이너 삭제**
-  * 컨테이너는 보통 실행 중이면 바로 삭제할 수 없다. 먼저 중지하고 삭제한다. (` docker stop my-nginx ` -> ` docker rm my-nginx `)
-  * 실행 중인 컨테이너를 강제로 삭제하기 : ` docker rm -f my-nginx `
-  * Container ID로 작업하기 : ` docker stop Container ID ` -> ` docker rm Container ID `
-
-* **2.2.4 컨테이너를 외부에 노출**
-  * 도커 네트워크는 기본적으로 격리되어 있다.
-  * Nginx는 컨테이너 내부에서 80번 포트를 사용하지만, Host PC의 80번 포트와 자동으로 연결되는 것은 아니다.
-  * 해결 방법: Port Mapping (`-p` 옵션)
-    * 명령어 형식 : `docker run -p 호스트포트:컨테이너포트 이미지이름`
-    * 실행 예시 : `docker run -d -p 8080:80 nginx`
-
-* **2.2.5 컨테이너 애플리케이션 구축**
-  * Docker에서 애플리케이션을 실행하는 개념을 알아보자.
-  * 컨테이너는 단순히 Linux를 실행하는 것이 목적이 아니라 **Application 실행**이다.
-  * Nginx 애플리케이션 : Nginx 이미지를 실행하면 컨테이너 안에서 Nginx가 동작한다.
-  * Docker Image를 만들 때 필요한 실행 환경을 함께 패키징한다.
-  * Docker 컨테이너는 하나의 주요 애플리케이션 또는 프로세스를 실행하기 위한 독립적인 환경으로 구성하는 것이 좋다.
-  * 각 애플리케이션을 독립적으로 관리할 수 있다.
-
-* **2.2.6 Docker 볼륨**
-  * 컨테이너 내부에만 데이터를 저장하면 컨테이너 삭제 시 데이터가 함께 사라질 수 있으므로 Volume을 사용한다.
-  * **Docker Volume이란?** : Docker 컨테이너의 데이터를 컨테이너 외부에 안전하게 저장하는 방법이다.
-  * Volume을 사용하면 컨테이너를 삭제해도 Docker Volume에 데이터가 유지된다.
-  * Docker Volume 생성 : `docker volume create my-volume`
-  * Docker Volume 목록 확인 : `docker volume ls`
-  * 컨테이너에 Volume 연결 : `docker run -v 볼륨이름:컨테이너경로 이미지이름`
-    * Nginx 예시 : `docker run -d --name nginx-volume -v my-volume:/usr/share/nginx/html nginx` (Nginx의 HTML 파일을 Volume에 영구 저장 가능)
-  * PostgreSQL에서 더 현실적인 예제 : 데이터가 지속적으로 유지되어야 하므로 일반적으로 Volume을 연결하여 사용한다.
-    * 명령어 예시 : `docker run -d --name postgres-db -e POSTGRES_PASSWORD=1234 -v postgres-data:/var/lib/postgresql/data postgres`
-
-* **2.2.7 도커 네트워크**
-  * 왜 Docker Network가 필요할까? 하나의 서비스는 여러 개의 컨테이너로 구성되는 경우가 많으며, 이 컨테이너들끼리 서로 통신하기 위해 네트워크가 필요하다.
-  * **Docker Network의 기본 개념** : Docker 컨테이너들을 연결하는 가상의 네트워크 공간이다.
-  * Docker Network 목록 확인 : `docker network ls`
-  * 기본 네트워크 종류 : 
-    * `bridge` (가장 많이 사용되는 기본 네트워크)
-    * `host` (컨테이너가 Host의 네트워크를 직접 사용하는 방식)
-    * `none` (네트워크 연결이 없는 고립된 방식)
-  * 사용자 정의 Network 만들기 : 
-    * 생성 : `docker network create spring-network`
-    * 확인 : `docker network ls`
-  * 컨테이너를 Network에 연결하여 실행 : `docker run -d --name spring-app --network spring-network spring-demo:v1`
-  * 컨테이너 이름으로 통신 : Spring Boot 등에서 데이터베이스에 연결할 때 `localhost`를 사용하면 안 된다. `localhost`는 컨테이너 자신을 의미하므로, 다른 컨테이너와 통신할 때는 **컨테이너 이름**을 사용해야 한다.
-  * 네트워크 상세 정보 확인 : `docker network inspect spring-network`
-  * 네트워크 핵심 정리 : Docker Network = 컨테이너끼리 통신하는 공간
-
-* **2.2.8 컨테이너 로깅**
-  * 컨테이너에서 발생하는 애플리케이션 로그를 확인하는 방법이다.
-  * 기본 로그 확인 : `docker logs 컨테이너이름`
-  * 실시간 로그 보기 : `docker logs -f spring-app`
-  * 최근 로그만 보기 : `docker logs --tail 100 spring-app`
-  * 로그 발생 시간 확인 : `docker logs -t spring-app`
-  * 실무에서 자주 사용하는 조합 명령어 : `docker logs -f --tail 100 spring-app`
-  * 로그의 흐름 : 애플리케이션이 표준 출력(stdout/stderr)으로 내보내는 로그를 Docker가 수집하여 제공한다.
-
-* **2.2.9 컨테이너 자원 할당 제한**
-  * 컨테이너가 사용할 수 있는 CPU와 메모리(RAM) 자원을 제한하는 방법이다.
-  * 메모리 제한 : `docker run -d --name spring-app --memory="512m" spring-demo:v1` (최대 메모리 512MB 제한)
-  * CPU 제한 : `docker run -d --name spring-app --cpus="1.0" spring-demo:v1` (최대 CPU 1코어 제한)
-  * CPU + Memory 동시 제한 : `docker run -d --name spring-app --memory="512m" --cpus="1.0" spring-demo:v1`
-  * 실행 중인 컨테이너의 실시간 자원 사용량 확인 : `docker stats` 또는 `docker stats spring-app`
-  * 참고: 실제 운영 환경(Kubernetes 등)에서는 나중에 YAML 파일로 이러한 자원 설정을 관리하게 된다.
-
-### 2.3 도커 이미지
-
-* **2.3.1 도커 이미지 생성**
-  * **도커 이미지란? :** 컨테이너를 실행하기 위한 템플릿(설계도)
-  * **이미지와 컨테이너의 관계 :** 도커 이미지(붕어빵틀), 도커 컨테이너(붕어빵), 하나의 이미지로 여러 개의 컨테이너를 만들 수 있다.
-  * **이미지를 만드는 방법 :** 기존 이미지 가져오기(`docker pull nginx`), `Dockerfile`로 직접 만들기
-  * **이미지 확인 :** `docker images` 또는 `docker image ls`
-
-* **2.3.2 이미지 구조 이해**
-  * 도커 이미지는 하나의 파일처럼 보이지만 실제로는 여러 개의 레이어로 구성된다.
-  * **왜 Layer 구조를 사용할까요? :** 도커의 장점은 변하지 않은 부분을 재사용할 수 있다는 것이다.
-  * **이미지와 컨테이너의 차이 :** 컨테이너가 실행되면 이미지 위에 쓰기 가능 레이어가 추가된다. (이미지 + 쓰기레이어 = 컨테이너)
-  * **이미지 레이어 확인하기 :** `docker history spring-demo:v1`
-  * **태그(tag)란? :** 보통 `이미지이름:태그` 형식으로 붙이며, 태그를 이용해서 이미지 버전을 관리한다.
-
-* **2.3.3 이미지 추출**
-  * 도커 이미지를 파일로 저장하는 방법이다.
-  * **이미지 저장하기 :** `docker save -o 파일이름.tar 이미지이름:태그` (예시: `docker save -o spring-demo-v1.tar spring-demo:v1`)
-  * **확인 :** `ls -lh spring-demo-v1.tar`
-  * **이미지 불러오기 :** `docker load -i spring-demo-v1.tar`
-  * **확인 :** `docker images`
-
-* **2.3.4 이미지 배포**
-  * 도커 이미지를 다른 서버에서도 사용할 수 있도록 배포해보기
-  * **Image Registry란? :** 도커 이미지를 저장하는 공간 (`Docker Hub`, `Private Registry` 등)
-  * **배포 과정 :** 태그 생성(`docker tag spring-demo:v1 myname/spring-demo:v1`) -> 업로드(`docker push myname/spring-demo:v1`)
-  * **이미지 다운 및 실행 :** `docker pull myname/spring-demo:v1` -> 실행(`docker run -d --name spring-app -p 8080:8080 myname/spring-demo:v1`)
-
-### 2.4 Dockerfile
-
-* **2.4.1 이미지를 생성하는 방법**
-  * **`docker commit` :** 실행 중인 컨테이너를 이미지로 만드는 방법 (`docker commit spring-app spring-demo:v2`)
-  * **`Dockerfile` 사용 :** Docker 이미지를 만드는 과정을 적어놓은 설명서
-  * **`Dockerfile`의 장점 :** 재현 가능, 자동화, Git으로 관리 가능
-
-* **2.4.2 Dockerfile 작성**
-  * **가장 기본적인 Dockerfile :** 프로젝트 최상위 디렉터리에 `Dockerfile`을 만든다.
-  * **`FROM` :** `FROM eclipse-temurin:21-jre` (Java 21 실행 환경을 기본 이미지로 사용한다.)
-  * **`WORKDIR` :** `WORKDIR /app` (컨테이너 내부의 작업 디렉터리를 지정한다. 이후 명령어는 기본적으로 `/app`에서 실행된다.)
-  * **`COPY` :** `COPY build/libs/*.jar app.jar` (현재 PC의 JAR 파일을 컨테이너 내부로 복사한다.)
-  * **`EXPOSE` :** `EXPOSE 8080` (컨테이너가 8080 포트를 사용하는 애플리케이션이라는 것을 나타낸다.)
-  * **`ENTRYPOINT` :** `ENTRYPOINT ["java", "-jar", "app.jar"]` (컨테이너가 시작될 때 실행할 명령어이다.)
-
-* **2.4.3 Dockerfile 빌드**
-  * **이미지 빌드 :** `docker build -t spring-demo:v1 .`
-  * **이미지 확인 :** `docker images`
-  * **컨테이너 실행 :** `docker run -d --name spring-app -p 8080:8080 spring-demo:v1`
-  * **확인 :** `docker ps`
-  * **로그 :** `docker logs spring-app`
-
-* **2.4.4 기타 Dockerfile 명령어**
-  * **`RUN` :** 이미지를 만드는 과정에서 명령어를 실행한다 (`RUN apt-get update`).
-  * **`CMD` :** 컨테이너가 실행될 때 기본 명령어를 지정한다 (`CMD ["java", "-jar", "app.jar"]`).
-  * **`CMD` vs `ENTRYPOINT` :** `CMD`는 기본 명령어, `ENTRYPOINT`는 컨테이너의 실행 명령을 뜻한다.
-  * **`ENV` :** 환경 변수를 설정한다 (`ENV SERVER_PORT=8080`).
-  * **`ARG` :** 이미지를 빌드할 때 사용할 변수를 정의한다 (`ARG VERSION=1.0`).
-  * **`USER` :** 컨테이너 내부에서 실행할 사용자를 지정한다 (`USER spring`).
-
-* **2.4.5 Dockerfile로 빌드할 때 주의할 점**
-  * Build Context를 조심해야 한다.
-  * 필요 없는 파일은 `.dockerignore`에 작성하여 도커 이미지 빌드 과정에 포함되지 않도록 한다.
-  * 이미지 크기를 줄이기 위해 노력해야 한다.
-  * Docker Layer Cache를 고려해야 한다.
-  * 포트 설정이 올바른지 확인해야 한다.
- 
 
 
-</details >
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
