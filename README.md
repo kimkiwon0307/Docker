@@ -219,95 +219,96 @@ Docker Engine은 Container를 실제로 관리하는 핵심 프로그램이다.
 3. ADD는 tar 자동 압축 해제 같은 추가 기능이 있기 때문에 특별한 이유가 있을 때 사용한다.
 
 ## 확인문제
+
 1. Docker Image란 무엇인가요?
-답: Container를 생성하기 위한 읽기 전용 템플릿입니다.
+- **정답:** Container를 생성하기 위한 읽기 전용 템플릿입니다.
 
 2. Docker Container란 무엇인가요?
-답: Image를 기반으로 생성되어 실제 애플리케이션 프로세스가 실행되는 격리된 실행 환경입니다.
+- **정답:** Image를 기반으로 생성되어 실제 애플리케이션 프로세스가 실행되는 격리된 실행 환경입니다.
 
 3. Container 안에서 파일을 수정하면 원본 Image도 수정되나요?
-답: 아니요. Image는 읽기 전용이고 변경사항은 Container의 Writable Layer에 기록됩니다.
+- **정답:** 아니요. Image는 읽기 전용이고 변경사항은 Container의 Writable Layer에 기록됩니다.
 
 4. docker create, docker start, docker run의 차이는 무엇인가요?
-답: create는 Container 생성, start는 생성된 Container 실행, run은 쉽게 생성과 실행을 함께 수행한다고 이해하면 됩니다.
+- **정답:** create는 Container 생성, start는 생성된 Container 실행, run은 쉽게 생성과 실행을 함께 수행한다고 이해하면 됩니다.
 
 5. docker ps와 docker ps -a의 차이는 무엇인가요?
-답: docker ps는 실행 중인 Container를 보여주고, docker ps -a는 정지된 것을 포함한 모든 Container를 보여줍니다.
+- **정답:** docker ps는 실행 중인 Container를 보여주고, docker ps -a는 정지된 것을 포함한 모든 Container를 보여줍니다.
 
 6. -p 8080:80의 의미는 무엇인가요?
-답: Host의 8080번 Port로 들어온 요청을 Container의 80번 Port로 전달한다는 의미입니다.
+- **정답:** Host의 8080번 Port로 들어온 요청을 Container의 80번 Port로 전달한다는 의미입니다.
 
 7. 실행 중인 Container 내부에서 명령을 실행하려면 무엇을 사용하나요?
-답: docker exec를 사용합니다. Shell 접속은 보통 docker exec -it 컨테이너명 /bin/bash 형태로 사용합니다.
+- **정답:** docker exec를 사용합니다. Shell 접속은 보통 docker exec -it 컨테이너명 /bin/bash 형태로 사용합니다.
 
 8. Docker Volume을 사용하는 이유는 무엇인가요?
-답: Container와 데이터의 생명주기를 분리하여 Container를 삭제해도 필요한 데이터를 유지하기 위해 사용합니다.
+- **정답:** Container와 데이터의 생명주기를 분리하여 Container를 삭제해도 필요한 데이터를 유지하기 위해 사용합니다.
 
 9. -v mysql-data:/var/lib/mysql에서 각각 무엇을 의미하나요?
-답: mysql-data는 Docker Volume 이름이고, /var/lib/mysql은 Container 내부의 Mount 경로입니다.
+- **정답:** mysql-data는 Docker Volume 이름이고, /var/lib/mysql은 Container 내부의 Mount 경로입니다.
 
 10. Named Volume과 Bind Mount의 차이는 무엇인가요?
-답: Named Volume은 Docker가 저장 위치를 관리하고, Bind Mount는 사용자가 Host의 특정 디렉터리를 직접 지정합니다.
+- **정답:** Named Volume은 Docker가 저장 위치를 관리하고, Bind Mount는 사용자가 Host의 특정 디렉터리를 직접 지정합니다.
 
 11. 같은 User-defined Docker Network에 있는 Container끼리는 어떻게 통신할 수 있나요?
-답: Docker DNS를 이용해 Container 이름으로 서로 통신할 수 있습니다.
+- **정답:** Docker DNS를 이용해 Container 이름으로 서로 통신할 수 있습니다.
 
 12. 같은 Docker Network 내부의 Container끼리 통신할 때 반드시 -p가 필요한가요?
-답: 아니요. -p는 주로 Host에서 Container로 접근할 때 사용하며, 같은 Network의 Container끼리는 내부 Network로 직접 통신할 수 있습니다.
+- **정답:** 아니요. -p는 주로 Host에서 Container로 접근할 때 사용하며, 같은 Network의 Container끼리는 내부 Network로 직접 통신할 수 있습니다.
 
 13. Container 로그를 확인하는 명령은 무엇인가요?
-답: docker logs 컨테이너명입니다. 실시간으로 보려면 docker logs -f 컨테이너명을 사용합니다.
+- **정답:** docker logs 컨테이너명입니다. 실시간으로 보려면 docker logs -f 컨테이너명을 사용합니다.
 
 14. Container의 CPU와 Memory 사용량을 확인하는 명령은 무엇인가요?
-답: docker stats입니다.
+- **정답:** docker stats입니다.
 
 15. Container의 상세 설정을 확인하는 명령은 무엇인가요?
-답: docker inspect 컨테이너명입니다.
+- **정답:** docker inspect 컨테이너명입니다.
 
 16. Container의 CPU와 Memory를 제한하려면 어떤 옵션을 사용할 수 있나요?
-답: CPU는 --cpus, Memory는 --memory 옵션을 사용할 수 있습니다.
+- **정답:** CPU는 --cpus, Memory는 --memory 옵션을 사용할 수 있습니다.
 
 17. Registry에서 Image를 가져오는 명령은 무엇인가요?
-답: docker pull입니다.
+- **정답:** docker pull입니다.
 
 18. Image를 삭제하는 명령은 무엇인가요?
-답: docker rmi입니다.
+- **정답:** docker rmi입니다.
 
 19. docker save/load와 docker push/pull의 차이는 무엇인가요?
-답: save/load는 Docker Image와 tar 파일 사이에서 사용하고, push/pull은 Local Image와 Registry 사이에서 사용합니다.
+- **정답:** save/load는 Docker Image와 tar 파일 사이에서 사용하고, push/pull은 Local Image와 Registry 사이에서 사용합니다.
 
 20. Docker Image의 Tag는 무엇인가요?
-답: Image의 버전이나 변형을 구분하기 위한 값입니다. 예를 들어 nginx:1.26에서 1.26이 Tag입니다.
+- **정답:** Image의 버전이나 변형을 구분하기 위한 값입니다. 예를 들어 nginx:1.26에서 1.26이 Tag입니다.
 
 21. docker commit은 무엇인가요?
-답: 변경된 Container의 현재 상태를 새로운 Image로 만드는 명령입니다.
+- **정답:** 변경된 Container의 현재 상태를 새로운 Image로 만드는 명령입니다.
 
 22. 실무에서 docker commit보다 Dockerfile이 중요한 이유는 무엇인가요?
-답: Image를 만드는 과정이 코드로 기록되므로 재현성, 변경 이력 관리, 자동화에 유리하기 때문입니다.
+- **정답:** Image를 만드는 과정이 코드로 기록되므로 재현성, 변경 이력 관리, 자동화에 유리하기 때문입니다.
 
 23. Dockerfile의 FROM은 무엇인가요?
-답: 새로운 Image를 만들 때 사용할 Base Image를 지정합니다.
+- **정답:** 새로운 Image를 만들 때 사용할 Base Image를 지정합니다.
 
 24. COPY는 무엇인가요?
-답: Build Context의 파일이나 디렉터리를 Image 내부로 복사합니다.
+- **정답:** Build Context의 파일이나 디렉터리를 Image 내부로 복사합니다.
 
 25. RUN과 CMD의 차이는 무엇인가요?
-답: RUN은 Image를 Build할 때 실행되고, CMD는 Container가 시작될 때 사용할 기본 명령이나 인자를 지정합니다.
+- **정답:** RUN은 Image를 Build할 때 실행되고, CMD는 Container가 시작될 때 사용할 기본 명령이나 인자를 지정합니다.
 
 26. ENTRYPOINT와 CMD의 차이를 간단히 설명하면?
-답: ENTRYPOINT는 주 실행 프로그램을 지정하고, CMD는 기본 명령이나 기본 인자를 지정하는 데 주로 사용합니다.
+- **정답:** ENTRYPOINT는 주 실행 프로그램을 지정하고, CMD는 기본 명령이나 기본 인자를 지정하는 데 주로 사용합니다.
 
 27. WORKDIR은 무엇인가요?
-답: 이후 Dockerfile 명령들이 실행될 기본 작업 디렉터리를 지정합니다.
+- **정답:** 이후 Dockerfile 명령들이 실행될 기본 작업 디렉터리를 지정합니다.
 
 28. ENV는 무엇인가요?
-답: Image나 Container에서 사용할 환경변수를 설정합니다.
+- **정답:** Image나 Container에서 사용할 환경변수를 설정합니다.
 
 29. EXPOSE 80을 쓰면 Host의 80번 Port가 자동으로 열리나요?
-답: 아니요. EXPOSE는 Container가 사용하는 Port 정보를 나타내는 역할이고, 실제 Port Mapping은 -p로 설정합니다.
+- **정답:** 아니요. EXPOSE는 Container가 사용하는 Port 정보를 나타내는 역할이고, 실제 Port Mapping은 -p로 설정합니다.
 
 30. docker build -t myimage:v1 . 에서 마지막 . 은 무엇인가요?
-답: 현재 디렉터리를 Docker Build Context로 사용한다는 뜻입니다.
+- **정답:** 현재 디렉터리를 Docker Build Context로 사용한다는 뜻입니다.
 
 
 
