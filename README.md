@@ -1,4 +1,5 @@
-# 1장 도커란?
+<details>
+<summary><b>1장 도커란?</b></summary>
 
 ## Docker와 Container
 VM은 각각 자기 Guest OS와 Kernel을 가진다.
@@ -38,6 +39,8 @@ Docker Engine은 Container를 실제로 관리하는 핵심 프로그램이다.
 
 ### 5. Container마다 독립된 Guest OS가 있나요?
 - **정답:** 아니요. Container는 Host의 Kernel을 공유하며 일반적으로 별도의 Guest OS를 가지지 않습니다.
+
+</details>
 
 # 2장 도커 엔진
 
