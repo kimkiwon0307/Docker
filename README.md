@@ -16,16 +16,28 @@ Docker Engine은 Container를 실제로 관리하는 핵심 프로그램이다.
 사용자 → docker 명령어 → Docker Engine → Image / Container / Network / Volume 관리 흐름으로 동작한다.
 
 ## 확인 문제
-1. VM과 Container의 가장 큰 차이는 무엇인가요?
-답: VM은 각각 Guest OS와 Kernel을 가지지만, Container는 Host의 Kernel을 공유합니다.
-2. Container가 VM보다 일반적으로 가벼운 이유는 무엇인가요?
-답: 별도의 Guest OS 없이 Host Kernel을 공유하기 때문에 시작이 빠르고 자원 사용량이 적습니다.
-3. Docker를 사용하는 대표적인 이유를 하나 말해보세요.
-답: 애플리케이션과 필요한 실행 환경을 Image로 묶어 개발환경과 운영환경의 차이를 줄이고 일관되게 실행하기 위해 사용합니다.
-4. Docker Engine은 무슨 역할을 하나요?
-답: Container, Image, Network, Volume 등을 생성하고 관리하는 Docker의 핵심 프로그램입니다.
-5. Container마다 독립된 Guest OS가 있나요?
-답: 아니요. Container는 Host의 Kernel을 공유하며 일반적으로 별도의 Guest OS를 가지지 않습니다.
+### 1. VM과 Container의 가장 큰 차이는 무엇인가요?
+- **정답:** VM은 각각 Guest OS와 Kernel을 가지지만, Container는 Host의 Kernel을 공유합니다.
+
+---
+
+### 2. Container가 VM보다 일반적으로 가벼운 이유는 무엇인가요?
+- **정답:** 별도의 Guest OS 없이 Host Kernel을 공유하기 때문에 시작이 빠르고 자원 사용량이 적습니다.
+
+---
+
+### 3. Docker를 사용하는 대표적인 이유를 하나 말해보세요.
+- **정답:** 애플리케이션과 필요한 실행 환경을 Image로 묶어 개발환경과 운영환경의 차이를 줄이고 일관되게 실행하기 위해 사용합니다.
+
+---
+
+### 4. Docker Engine은 무슨 역할을 하나요?
+- **정답:** Container, Image, Network, Volume 등을 생성하고 관리하는 Docker의 핵심 프로그램입니다.
+
+---
+
+### 5. Container마다 독립된 Guest OS가 있나요?
+- **정답:** 아니요. Container는 Host의 Kernel을 공유하며 일반적으로 별도의 Guest OS를 가지지 않습니다.
 
 # 2장 도커 엔진
 
