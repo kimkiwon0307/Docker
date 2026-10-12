@@ -885,5 +885,421 @@ volumes:
 2. Controller = 현재 상태를 감시하고 원하는 상태로 계속 맞추는 역할
 3. RaplicaSet은 Selector로 관리할 Pod를 찾고, 현재 개수와 replicas 값을 비교해 부족하면 template으로 새 Pod를 만들어 원하는 개수를 유지한다.
 
+## 디플로이먼트 : ReplicaSet과 Pod의 배포를 관리
+1. Deployment는 ReplicaSet보다 한 단계 위에서 배포 전체를 관리하는 오브젝트입니다.
+2. ReplicaSet은 주로 Pod 개수 유지가 핵심
+3. Deployment는 Pod 개수 유지 + 버전 업데이트 + Rolling Update + Rollback 까지 관리한다.
+
+## ReplicaSet과 Deployment 차이
+1. ReplicaSet : Pod 개수 유지
+2. Deployment : ReplicaSet 관리 + 애플리케이션 배포 관리
+3. Deployment 는 사용자가 작성
+
+## Deployment 사용하기
+1. Deployment를 만들면 Kubernetes가 그 아래 ReplicaSet과 Pod를 자동으로 만든다.
+
+## 구조
+1. 사용자가 Deployment 생성
+2. Deployment가 ReplicaSet 관리
+3. ReplicaSet이 pod 개수 관리
+4. Pod 안에서 Container 실행
+
+## Deployment를 왜 쓰는가?
+1. ReplicaSet은 Pod 개수를 원하는 만큼 유지하는 것이다.
+2. 버전을 바꾸고 싶다면 Deployment는 기존 Pod를 조금씩 줄이고 새 버전 Pod를 조금씩 늘리는 방식으로 교체한다. 이것이 Rolling Update이다.
+3. 서비스를 최대한 유지하면서 점진적으로 새 버전으로 교체 하는 것이다.
+
+## 왜 ReplicaSet만으로는 부족한가.
+1. ReplicaSet은 버전을 관리하는 용도가 핵심이 아니다.
+2. Deployment는 ReplicaSet위에서 버전을 관리한다.
+
+## Rolling Update
+1. kubectl set image deployment/nginx-deployment nginx=nginx:1.27
+2. deployment/nginx-deployment → nginx-deployment Deployment
+3. nginx= → YAML에서 Container 이름이 nginx
+4. nginx:1.27 → 변경할 새 이미지
+5. nginx-deployment 안의 nginx Container 이미지를 nginx:1.27로 바꿔라 라는 뜻
+
+## 업데이트 진행상황 확인
+1. kubectl rollout status deployment/nginx-deployment
+2. Deployment는 기존 ReplicaSet의 설정을 억지로 바꾸는 게 아니라, 새 버전용 ReplicaSet을 새로 만들고 교체한다.
+
+## Rollout Histroy
+1. kubectl rollout history deployment/nginx-deployment
+
+## Rollback 
+1. kubectl rollout undo deployment/nginx-deployment
+
+## 그래서 Deployment를 왜 쓰느냐?
+1. 일반 애플리케이션 배포는 ReplicaSet을 직접 만들기보다 Deployment를 주로 사용한다.
+2. 운영에서는 단순히 Pod 수만 유지하는게 아니라 새 버전을 안전하게 배포하고 문제가 생기면 되돌리는 것이 중요하기 때문이다.
+
+## Service의 종류
+1. Pod 앞에 고정된 접근 지점을 만들어 주는 오브젝트이다.
+2. Pod는 Ip가 바뀔 수 있지만 Service는 안정적인 주소를 제공한다.
+3. Service의 종류는 크게 4개이다.
+
+## ClusterIP
+1. 가장 기본적인 Service 타입이다.
+2. 클러스터 내부에서만 접근 가능하다.
+
+## NodePort
+1. 각 Node의 특정 포트를 열어서 외부에서 접근할 수 있게 하는 방식
+2. 보통 NodePort 범위는 3000 ~ 32767이다.
+
+## LoadBalancer
+1. 클라우드의 Load Balancer와 연결해서 외부에 서비스를 노출하는 방식이다.
+
+## ExternalName
+1. Kubernetes 내부 이름을 외부 DNS 이름에 연결합니다.
+
+## ClusterIP 타입의 Service
+1. ClusterIP Service는 클러스터 내부에서 Pod들 앞에 고정된 주소를 제공한다.
+2. Service는 고정된 접속 창구이다.
+
+## Service YAML 만들기
+1. nano service-clusterip.yaml
+2.
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: nginx-service
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: nginx
+
+  ports:
+    - port: 80
+      targetPort: 80
+ 3. nginx-service라는 Service를 만들고
+ 4. app=nginx라는 이름표를 가진 기존 Pod들을 찾아서 Service 80번 포트로 들어온 요청을 Pod 80번 포트로 보내라
+
+ ## 제일 중요한 Selector
+ 1. selector:
+       app: nginx
+ 2. Service가 app=nginx인 Pod를 찾아
+
+## ClusterIP는 뭔가?
+1. Service를 만들면 Kubernetes가 내부용 IP를 하나 준다.
+2. 이게 ClusertIP이다.
+
+## 실제 적용
+1. kubectl apply -f service-clusterip.yaml
+2. kubectl get svc
+
+## 실제로 Service를 통해 접속해보기
+1. kubectl run curl-test --image=curlimages/curl -it --rm -- sh
+2. curl nginx-service
+3. ClusterIP Service는 이미 존재하는 Pod들을 selector로 찾아서, Kubernetes 내부에서 안정적으로 접근할 수 있는 고정 창구를 만들어주는 기능이다.
+
+## NodePort 타입의 Service
+1. NodePort는 Kubernetes 바깥에서 Node의 IP와 특정 포트를 통해 Service에 접근하게 해주는 방식이다.
+
+## ClusterIP와 NodePort 차이
+1. ClusterIP는 Kubernetes 내부에서만 접근했다.
+2. NodePort는 외부에서 들어올 수 있다.
+
+## NodePort 이름 유래
+1. Node의 Port를 하나 열기 때문이다.
+2. NodePort의 포트 범위는 30000 ~ 32767 이다.
+
+## YAML 만들기
+1. nano service-nodeport.yaml
+2. 
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: nginx-nodeport
+
+spec:
+  type: NodePort
+
+  selector:
+    app: nginx
+
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080  
+
+## port / targetPort / nodePort
+1. nodePort : Node에서 외부에 열어 놓는 포트
+2. port : Service의 포트
+3. targerPort : 실제 Pod의 포트
+
+## LoadBalancer Service
+1. 클라우드의 로드밸런서를 Kubernetes Service와 연결하는 방식
+2. 외부사용자는 로드밸런서 주소로 접속한다.
+
+## NodePort와 차이
+1. NodePort는 Node IP와 포트를 직접 알아야한다.
+2. LoadBalancer는 알 필요가 없다.
+
+## externalTrafficPolicy
+1. 외부에서 들어온 요청을 어떤 Pod로 보낼까?
+2. externalTrafficPolicy가 어떤 Pod까지 후보로 삼을지 결정한다.
+
+## 기본값: Cluster
+1. externalTrafficPolicy: Cluster
+2. 요청이 들어온 Node에 Pod가 없어도, 클러스터 전체의 Pod 중 하나로 보내도 된다.
+3. 클러스터 전체 Pod를 대상으로 트래픽을 분해 한다.
+
+## Local
+1. externalTrafficPolicy: Local
+2. 요청이 들어온 바로 그 Node에 있는 pod에게만 전달한다.
+3. 실제 사용자의 IP를 보존해야 할 때 사용한다.
+4. Local은 아무 Node에게나 Pod가 있어도 되는 게 아니라, 외부 요청을 받을 Node에 실제 Pod가 있는지 중요하다.
+
+## ExternalName
+1. ExternalName은 앞에서 본 ClusterIP, NodePort, LoadBalancer와 성격이 다르다.
+2. Kubernetes 내부 이름을 외부 DNS 이름에 연결하는 Service이다.
+3. 쉽게 말하면 별명이다.
+4. 외부 서비스를 Kubernetes 내부 Service 이름처럼 사용하고 싶을 때 쓴다.
+
+## 확인문제
+
+[6장 쿠버네티스 시작하기 - 확인문제 + 정답]
+
+1. Kubernetes에서 Container를 직접 실행 단위로 다루기보다 사용하는 기본 단위는 무엇인가요?
+정답: Pod
+
+2. Pod와 Container는 같은 것인가요?
+정답: 아닙니다. Container는 실제 애플리케이션 프로세스가 실행되는 단위이고, Pod는 하나 이상의 Container를 묶어 Kubernetes가 배치하고 관리하는 기본 단위입니다.
+
+3. 일반적인 애플리케이션에서는 Pod 하나에 Container를 몇 개 두는 경우가 많나요?
+정답: 보통 1개
+
+4. Pod 하나 안에 여러 Container를 넣을 수 있나요?
+정답: 네. 서로 밀접하게 협력해야 하는 Container들을 하나의 Pod에 넣을 수 있습니다.
+
+5. 같은 Pod 안의 Container들은 네트워크를 공유하나요?
+정답: 네. 같은 네트워크 공간을 공유합니다.
+
+6. 같은 Pod 안의 Container끼리는 localhost로 통신할 수 있나요?
+정답: 네.
+
+7. 같은 Pod 안의 Container들이 서로 다른 Node에 배치될 수 있나요?
+정답: 아닙니다. 같은 Pod의 Container들은 같은 Node에 배치됩니다.
+
+8. Pod를 어느 Node에 배치할지 결정하는 Kubernetes 구성요소는 무엇인가요?
+정답: Scheduler
+
+9. Node에서 Pod 실행을 관리하는 구성요소는 무엇인가요?
+정답: kubelet
+
+10. Pod를 직접 생성한 뒤 삭제하면 자동으로 다시 만들어지나요?
+정답: 아닙니다. ReplicaSet이나 Deployment 같은 Controller가 관리하지 않는 Pod는 삭제되면 그대로 사라집니다.
+
+11. ReplicaSet의 핵심 역할은 무엇인가요?
+정답: 원하는 개수의 Pod를 항상 유지하는 것입니다.
+
+12. replicas: 3의 의미는 무엇인가요?
+정답: Pod를 3개 유지하겠다는 의미입니다.
+
+13. ReplicaSet은 어떤 Pod를 자신이 관리할 Pod인지 어떻게 찾나요?
+정답: Label과 Selector를 이용합니다.
+
+14. Label이란 무엇인가요?
+정답: Pod 등의 Kubernetes 오브젝트에 붙이는 이름표 또는 태그입니다.
+
+15. Selector란 무엇인가요?
+정답: 특정 Label을 가진 오브젝트를 선택하기 위한 조건입니다.
+
+16. ReplicaSet의 template은 어떤 역할을 하나요?
+정답: Pod가 부족할 때 새로 만들 Pod의 설계도를 정의합니다.
+
+17. ReplicaSet에서 원하는 Pod 수가 5개인데 현재 4개라면 어떻게 되나요?
+정답: ReplicaSet이 Pod 하나를 새로 생성해서 다시 5개로 맞춥니다.
+
+18. ReplicaSet에서 원하는 Pod 수가 3개인데 현재 4개라면 어떻게 되나요?
+정답: Pod 하나를 제거해서 다시 3개로 맞춥니다.
+
+19. Kubernetes Controller의 기본 동작 방식은 무엇인가요?
+정답: Desired State와 Current State를 비교해서 현재 상태를 원하는 상태로 맞춥니다.
+
+20. Deployment의 기본 구조를 순서대로 말하면 어떻게 되나요?
+정답: Deployment → ReplicaSet → Pod → Container
+
+21. Deployment를 사용하는 주된 이유는 무엇인가요?
+정답: ReplicaSet과 Pod의 배포를 관리하고 Rolling Update와 Rollback 같은 배포 기능을 사용하기 위해서입니다.
+
+22. 일반 애플리케이션 배포에서 ReplicaSet을 직접 만들기보다 주로 무엇을 사용하나요?
+정답: Deployment
+
+23. Deployment를 만들면 ReplicaSet도 직접 따로 만들어야 하나요?
+정답: 아닙니다. Deployment가 ReplicaSet을 자동으로 생성하고 관리합니다.
+
+24. Rolling Update란 무엇인가요?
+정답: 기존 Pod를 한꺼번에 제거하지 않고 새 버전 Pod로 점진적으로 교체하는 방식입니다.
+
+25. Rolling Update의 장점은 무엇인가요?
+정답: 서비스를 최대한 유지하면서 애플리케이션 버전을 변경할 수 있습니다.
+
+26. Deployment에서 이미지 버전을 변경하면 어떻게 되나요?
+정답: 새로운 Pod Template에 해당하는 ReplicaSet이 만들어지고 새 ReplicaSet으로 점진적으로 전환됩니다.
+
+27. kubectl rollout status deployment/nginx-deployment 명령은 무엇을 확인하나요?
+정답: Deployment의 배포 진행 상태를 확인합니다.
+
+28. kubectl rollout history deployment/nginx-deployment 명령은 무엇을 확인하나요?
+정답: Deployment의 Rollout Revision 이력을 확인합니다.
+
+29. kubectl rollout undo deployment/nginx-deployment 명령의 역할은 무엇인가요?
+정답: 이전 배포 Revision으로 Rollback합니다.
+
+30. Service를 사용하는 가장 중요한 이유는 무엇인가요?
+정답: Pod가 재생성되면서 IP가 변경되어도 안정적인 접근 지점을 제공하기 위해서입니다.
+
+31. Service가 Pod를 직접 생성하나요?
+정답: 아닙니다. Service는 이미 존재하는 Pod를 찾아 연결합니다.
+
+32. Deployment와 Service의 역할 차이는 무엇인가요?
+정답: Deployment는 Pod를 생성, 유지, 배포하고 Service는 해당 Pod들에 접근할 수 있는 안정적인 창구를 제공합니다.
+
+33. Service는 어떤 Pod와 연결할지 어떻게 결정하나요?
+정답: Selector를 이용해 일치하는 Label을 가진 Pod를 찾습니다.
+
+34. ClusterIP Service란 무엇인가요?
+정답: Kubernetes 클러스터 내부에서 Pod에 접근할 수 있도록 하는 기본 Service 타입입니다.
+
+35. ClusterIP의 대표적인 용도는 무엇인가요?
+정답: Kubernetes 내부의 애플리케이션끼리 통신할 때 사용합니다.
+
+36. Pod IP와 Service ClusterIP의 차이는 무엇인가요?
+정답: Pod IP는 개별 Pod의 주소로 Pod 재생성 시 변경될 수 있지만 Service ClusterIP는 Service의 안정적인 내부 접근 주소입니다.
+
+37. Service YAML에서 port는 무엇인가요?
+정답: Service가 요청을 받는 포트입니다.
+
+38. Service YAML에서 targetPort는 무엇인가요?
+정답: 요청을 실제 Pod의 어느 포트로 전달할지 지정하는 값입니다.
+
+39. port: 8080, targetPort: 80이면 어떤 의미인가요?
+정답: Service의 8080번 포트로 들어온 요청을 Pod의 80번 포트로 전달한다는 뜻입니다.
+
+40. NodePort Service란 무엇인가요?
+정답: Node의 특정 포트를 외부에 열어서 Node IP + Port로 Service에 접근할 수 있게 하는 타입입니다.
+
+41. NodePort의 기본 포트 범위는 무엇인가요?
+정답: 일반적으로 30000~32767입니다.
+
+42. nodePort: 30080의 의미는 무엇인가요?
+정답: Node의 30080번 포트를 외부 접근용으로 사용한다는 의미입니다.
+
+43. NodePort에서 요청 흐름을 간단히 표현하면 어떻게 되나요?
+정답: 외부 사용자 → Node IP:NodePort → Service → Pod
+
+44. 같은 Pod들을 바라보는 ClusterIP Service와 NodePort Service를 동시에 만들 수 있나요?
+정답: 네. 같은 Label의 Pod를 대상으로 여러 Service를 만들 수 있습니다.
+
+45. LoadBalancer Service란 무엇인가요?
+정답: 클라우드의 Load Balancer와 연동해서 외부에서 Service에 접근할 수 있게 하는 타입입니다.
+
+46. VMware + kubeadm 환경에서 type: LoadBalancer를 만들면 AWS Load Balancer 같은 것이 자동으로 생성되나요?
+정답: 아닙니다. 연동된 Load Balancer 구현이 없다면 EXTERNAL-IP가 <pending> 상태가 될 수 있습니다.
+
+47. ExternalName Service는 일반적인 Service처럼 Pod로 트래픽을 전달하나요?
+정답: 아닙니다. Kubernetes 내부 이름을 외부 DNS 이름에 연결하는 방식입니다.
+
+48. ExternalName의 예를 들면 어떻게 되나요?
+정답: external-db라는 Service 이름을 db.example.com 같은 외부 DNS 이름에 연결할 수 있습니다.
+
+49. externalTrafficPolicy: Cluster의 의미는 무엇인가요?
+정답: 외부 요청을 클러스터 전체의 대상 Pod로 전달할 수 있다는 의미이며 기본값입니다.
+
+50. externalTrafficPolicy: Local의 의미는 무엇인가요?
+정답: 요청을 받은 Node에 존재하는 로컬 Pod로만 트래픽을 전달합니다.
+
+51. externalTrafficPolicy: Local의 대표적인 장점은 무엇인가요?
+정답: 원래 클라이언트 IP를 보존하는 데 유리합니다.
+
+52. externalTrafficPolicy: Local의 단점은 무엇인가요?
+정답: 요청을 받은 Node에 대상 Pod가 없으면 전달할 Pod가 없을 수 있고 Pod 배치에 따라 트래픽 분산이 불균형해질 수 있습니다.
+
+53. kubectl get pods -o wide 명령으로 추가로 확인할 수 있는 것은 무엇인가요?
+정답: Pod IP와 Pod가 배치된 Node 등을 확인할 수 있습니다.
+
+54. kubectl describe pod <Pod이름>은 언제 사용하나요?
+정답: Pod의 상세 상태, 설정, 이벤트 등을 확인할 때 사용합니다.
+
+55. Pod 장애를 확인할 때 기본적인 확인 흐름은 어떻게 가져갈 수 있나요?
+정답: kubectl get pods → kubectl describe pod → Events 확인 → kubectl logs 확인
+
+56. kubectl logs <Pod이름>의 역할은 무엇인가요?
+정답: Pod 내부 Container의 로그를 확인합니다.
+
+57. kubectl exec -it <Pod이름> -- /bin/bash 또는 sh는 무엇을 위한 명령인가요?
+정답: 실행 중인 Pod의 Container 내부로 들어가 명령을 실행하기 위한 명령입니다.
+
+58. kubectl run curl-test --image=curlimages/curl -it --rm -- sh 명령의 목적은 무엇인가요?
+정답: curl이 들어 있는 임시 테스트 Pod를 만들고 내부로 들어가 Service 통신을 확인한 뒤 종료하면 자동 삭제하기 위한 명령입니다.
+
+59. ClusterIP 테스트를 위해 임시 Pod 안에서 curl nginx-service를 실행하는 이유는 무엇인가요?
+정답: ClusterIP는 클러스터 내부용이므로 Kubernetes 내부 Pod에서 Service 이름을 통해 실제 nginx Pod까지 연결되는지 확인하기 위해서입니다.
+
+60. 6장에서 가장 중요한 전체 구조는 무엇인가요?
+정답:
+
+Deployment
+    ↓
+ReplicaSet
+    ↓
+Pod
+    ↓
+Container
+
+Service
+    ↓
+Pod들에 안정적인 접근 제공
+
+
+[6장 최종 핵심 정리]
+
+Pod
+= Container를 실행하는 Kubernetes 기본 단위
+
+ReplicaSet
+= 원하는 Pod 개수를 유지
+
+Deployment
+= ReplicaSet 관리 + 배포 + Rolling Update + Rollback
+
+Service
+= Pod에 접근하는 안정적인 창구
+
+ClusterIP
+= 클러스터 내부 접근
+
+NodePort
+= Node IP + Port로 외부 접근
+
+LoadBalancer
+= 클라우드 Load Balancer 연동
+
+ExternalName
+= Kubernetes 내부 이름을 외부 DNS 이름에 연결
+
+전체 구조
+Deployment → ReplicaSet → Pod → Container
+
+Service → Pod
+
+
+
+
 </details>
+
+
+
+
+
+
+
+
+
 
