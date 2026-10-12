@@ -770,11 +770,84 @@ volumes:
 - **정답:** kubeadm으로 Control Plane 1대와 Worker 2대의 3 Node Kubernetes Cluster를 직접 구축하고 모두 Ready 상태까지 만든 것입니다.
 
 
+<details>
+<summary><b>6장 쿠버네티스 시작하기</b></summary>
 
+## Kubernetes는 Container를 직접 관리하지 않는다.
+1. Docker는 Container를 직접 관리했다.
+2. Kubernetes는 기본적으로 Pod가 Container를 관리한다.
+3. Kubernetes가 직접 다루는 기본 단위는 Container가 아니라 Pod이다.
+4. Pod : Container 실행 기본 단위
+5. ReplicaSet : Pod 개수 유지
+6. Deployment : 배포 / 업데이트 관리
+7. Service : Pod로 가는 안정적인 접근 지점
+8. Deployment → ReplicaSet → Pod → Container
 
+## Pod란?
+1. Kubernetes에서 가장 기본이 되는 실행 단위가 Pod이다.
+2. Pod는 Kubernetes가 Container를 실행하고 관리하기 위해 사용하는 기본 단위
+3. Container는 실제 애플리케이션 프로세스가 실행되는 곳이고, Pod는 그 Container를 감싸는 Kubernetes 단위
+4. Pod (Contaienr, Network환경, Pod IP, Volume 등을 연결할 수 있는 실행 환경)
+5. 보통 Pod 하나에 Container 하나
+6. 필요하다면 여려 Container도 가능하다. 보조 Container 패턴을 Sidecar라고 부른다.
 
+## Pod에는 IP가 생긴다.
+1. Pod가 만들어지면 Kubernetes 네트워크에서 사용할 Pod IP를 받을 수 있다.
+2. Flannel/CNI → Pod Network 구성 → 각 Pod에 IP 부여 → Pod끼리 통신 가능
 
+## Pod는 특정 Node에서 실행된다.
+1. Pod를 만들면 Kubernetes가 Pod를 실행할 Node를 결정한다.
+2. 어느 Node에 Pod를 놓을지 결정하는 구성요소가 Scheduler이다.
+3. 새 pod 필요 → Scheduler → 어느 Node가 적절할까? → worker1 선택 → Pod 실행
+4. 선택된 Node에서는 kubelet → containerd → Container 실행
+5. Pod 생성 요청 → API Server → Scheduler 가 Node 선택 → 해당 Node의 kubelet → containerd → Container 실행
 
+## Pod는 영구적인 서버가 아니다.
+1. Pod는 필요에 따라 생성, 삭제, 재생성, 교체가 될 수 있다.
+2. 재생성되면 IP도 바뀔 수 있다.
+
+## Pod 사용하기
+1. kubectl run nginx-pod --image=nginx
+2. kubectl run : Pod 생성
+3. nginx-pod : Pod 이름
+4. --image=nginx : nginx Image 사용
+
+## Pod 확인
+1. kubectl get pods
+2. kubectl get pods -o wide
+
+## pod 상세 정보
+1. kubectl describe pod nginx-pod
+2. Node, Pod IP, Image, Container 상태, Conditions, Events 등을 볼 수 있다.
+
+## Pod 로그 확인
+1. kubectl logs nginx-pod
+
+## Pod 내부 접속
+1. kubectl exec -it nginx-pod -- /bin/bash
+
+## Pod 삭제
+1. kubectl delete pod nginx-pod
+
+## Pod vs Docker Container
+1. Docker는 Container를 직접 다루고, Kubernetes는 Pod를 통해 Container를 다룬다.
+
+## Container 위에 Pod라는 단위가 필요한 이유
+1. Kubernetes는 경우에 따라 서로 아주 밀접한 여러 Container를 하나의 실행 단위로 묶을 필요가 있다.
+2. Pod (Main APP Container + Helper Container)
+3. 이 두 Container는 같은 Node에 배치되고, 같은 Pod 생명주기를 가지고, 같은 네트워크 공간을 공유하고, Volume도 함께 사용할 수 있다.
+
+## IP도 Pod 기준
+1. 같은 Pod 안에 여러 Container가 있어도 같은 Pod 네트워크 공간을 공유한다.
+
+## Pod가 Node에 배치된다.
+1. Kubernetes Scheduler가 배치하는 대상도 Cotainer가 아니라 Pod이다.
+
+## 완전한 애플리케이션으로서의 Pod
+1. 서로 아주 밀접하게 협력해야 하는 Container들을 하나의 Pod 안에 묶을 수 있다.
+2. Helper Container가 App Container에 접근하려면 curl localhost:8080 처럼 할 수 있다.
+3. 서로 독립적으로 운영해야 하는 애플리케이션은 Pod를 부닐하고, 반드시 함께 움직여야 하는 보조 Container만 같은 Pod에 넣는다.
+4. 이런 보조 Container를 Sidecar Container라고 한다.
 
 </details>
 
