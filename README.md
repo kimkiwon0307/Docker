@@ -769,7 +769,7 @@ volumes:
 **38. 5장에서 가장 중요한 실습 경험은 무엇이었나요?**
 - **정답:** kubeadm으로 Control Plane 1대와 Worker 2대의 3 Node Kubernetes Cluster를 직접 구축하고 모두 Ready 상태까지 만든 것입니다.
 
-
+</details>
 <details>
 <summary><b>6장 쿠버네티스 시작하기</b></summary>
 
@@ -849,7 +849,7 @@ volumes:
 3. 서로 독립적으로 운영해야 하는 애플리케이션은 Pod를 부닐하고, 반드시 함께 움직여야 하는 보조 Container만 같은 Pod에 넣는다.
 4. 이런 보조 Container를 Sidecar Container라고 한다.
 
+
+
 </details>
-
-
 
