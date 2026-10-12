@@ -849,7 +849,41 @@ volumes:
 3. 서로 독립적으로 운영해야 하는 애플리케이션은 Pod를 부닐하고, 반드시 함께 움직여야 하는 보조 Container만 같은 Pod에 넣는다.
 4. 이런 보조 Container를 Sidecar Container라고 한다.
 
+## ReplicaSet이란 
+1. ReplicaSet은 원하는 개수의 Pod가 항상 유지되도록 관리하는 Controller이다.
 
+## ReplicaSet을 사용하는 이유
+1. Pod가 삭제되거나 장애가 발생해도 원하는 개수를 자동으로 유지하기 위해서
+
+## ReplicaSet은 어떤 Pod를 관리할까
+1. Label을 보고 자기 관리 대상 Pod를 찾는다.
+
+## Label이란?
+1. Label은 Kubernetes 오브젝트에 붙이는 이름표/태그라고 생각하면 된다.
+
+## Selector란?
+1. 어떤 Label을 가진 Pod를 관리할지 선택하는 조건
+2. Label : Pod에 붙은 이름표
+3. Selector : 그 이름표를 보고 Pod 선택
+
+## Controller
+1. ReplicaSet은 Controller이다.
+2. 현재 상태를 계속 확인하면서 원하는 상태로 맞추는 역할이다.
+3. ReplicaSet은 Label과 Selector로 관리할 Pod를 찾고, replicas 값만큼 Pod 개수를 계속 유지한다.
+
+
+
+
+
+
+
+
+
+
+## ReplicaSet은 어떻게 동작하나 
+1. ReplicaSet의 핵심은 계속 원하는 상태와 현재 상태를 비교하는 것이다.
+2. Controller = 현재 상태를 감시하고 원하는 상태로 계속 맞추는 역할
+3. RaplicaSet은 Selector로 관리할 Pod를 찾고, 현재 개수와 replicas 값을 비교해 부족하면 template으로 새 Pod를 만들어 원하는 개수를 유지한다.
 
 </details>
 
