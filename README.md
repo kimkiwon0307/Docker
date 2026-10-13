@@ -2013,7 +2013,123 @@ Kubernetes Cluster
 ## Namespace
 
 ```text
-K
+Kubernetes 리소스를 논리적으로 구분하는 공간
+```
+
+예:
+
+```text
+default
+kube-system
+portfolio
+dev
+prod
+```
+
+---
+
+## ConfigMap
+
+```text
+일반 설정값 관리
+```
+
+예:
+
+```text
+APP_ENV
+LOG_LEVEL
+DB_HOST
+DB_PORT
+```
+
+Pod에서 가져올 때:
+
+```yaml
+configMapKeyRef
+```
+
+---
+
+## Secret
+
+```text
+민감한 설정값 관리
+```
+
+예:
+
+```text
+DB_USERNAME
+DB_PASSWORD
+API_TOKEN
+```
+
+Pod에서 가져올 때:
+
+```yaml
+secretKeyRef
+```
+
+---
+
+# 실제 프로젝트 기본 흐름
+
+```text
+Namespace 생성
+        ↓
+ConfigMap / Secret 생성
+        ↓
+Deployment 생성
+        ↓
+ReplicaSet 자동 생성
+        ↓
+Pod 자동 생성
+        ↓
+Pod가 ConfigMap / Secret 사용
+        ↓
+Service가 Pod에 접근
+```
+
+---
+
+# 반드시 기억할 구조
+
+```text
+Deployment
+    ↓
+ReplicaSet
+    ↓
+Pod
+    ↓
+Container
+```
+
+그리고 옆에서 Pod를 돕는 리소스:
+
+```text
+ConfigMap
+    ↓
+일반 설정 전달
+
+Secret
+    ↓
+민감 설정 전달
+
+Service
+    ↓
+Pod에 접근
+
+Namespace
+    ↓
+리소스들을 논리적으로 구분
+```
+
+---
+
+# 한 줄 정리
+
+> **Namespace는 리소스를 구분하고, ConfigMap과 Secret은 Pod가 사용할 설정을 외부에서 제공하며, Deployment는 ReplicaSet과 Pod를 생성·관리하고, Service는 해당 Pod에 접근할 수 있는 안정적인 창구를 제공합니다.**
 
 
 </details>
