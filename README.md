@@ -1372,317 +1372,649 @@ Service → Pod
 
 
 ## 확인문제
+# 7장 쿠버네티스 리소스의 관리와 설정 - 확인문제 + 정답
 
-[7장 쿠버네티스 리소스의 관리와 설정 - 확인문제 + 정답]
+## 1. Namespace란 무엇인가요?
 
-1. Namespace란 무엇인가요?
-정답: 하나의 Kubernetes 클러스터 안에서 리소스를 논리적으로 구분하기 위한 공간입니다.
+**정답:**  
+하나의 Kubernetes 클러스터 안에서 리소스를 논리적으로 구분하기 위한 공간입니다.
 
-2. Namespace는 Node를 물리적으로 분리하는 기능인가요?
-정답: 아닙니다. Namespace는 논리적인 구분이며, 서로 다른 Namespace의 Pod가 같은 Node에서 실행될 수도 있습니다.
+---
 
-3. Namespace를 지정하지 않고 리소스를 만들면 기본적으로 어느 Namespace에 생성되나요?
-정답: default Namespace
+## 2. Namespace는 Node를 물리적으로 분리하는 기능인가요?
 
-4. Kubernetes 시스템 구성요소들이 주로 사용하는 Namespace는 무엇인가요?
-정답: kube-system
+**정답:**  
+아닙니다. Namespace는 논리적인 구분이며, 서로 다른 Namespace의 Pod가 같은 Node에서 실행될 수도 있습니다.
 
-5. Namespace 목록을 확인하는 명령어는 무엇인가요?
-정답:
+---
+
+## 3. Namespace를 지정하지 않고 리소스를 만들면 기본적으로 어느 Namespace에 생성되나요?
+
+**정답:**  
+`default` Namespace
+
+---
+
+## 4. Kubernetes 시스템 구성요소들이 주로 사용하는 Namespace는 무엇인가요?
+
+**정답:**  
+`kube-system`
+
+---
+
+## 5. Namespace 목록을 확인하는 명령어는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl get namespaces
-또는
-kubectl get ns
+```
 
-6. 특정 Namespace의 Pod를 조회하려면 어떻게 하나요?
-정답:
+또는
+
+```bash
+kubectl get ns
+```
+
+---
+
+## 6. 특정 Namespace의 Pod를 조회하려면 어떻게 하나요?
+
+**정답:**
+
+```bash
 kubectl get pods -n <Namespace이름>
+```
 
 예:
+
+```bash
 kubectl get pods -n portfolio
+```
 
-7. 모든 Namespace의 Pod를 한 번에 확인하는 명령어는 무엇인가요?
-정답:
+---
+
+## 7. 모든 Namespace의 Pod를 한 번에 확인하는 명령어는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl get pods -A
+```
+
 또는
+
+```bash
 kubectl get pods --all-namespaces
+```
 
-8. portfolio라는 Namespace를 만드는 명령어는 무엇인가요?
-정답:
+---
+
+## 8. `portfolio`라는 Namespace를 만드는 명령어는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl create namespace portfolio
+```
 
-9. 서로 다른 Namespace에서 같은 이름의 리소스를 만들 수 있나요?
-정답: 네. Namespace가 다르면 같은 이름의 리소스가 각각 존재할 수 있습니다.
+---
 
-10. ConfigMap이란 무엇인가요?
-정답: 애플리케이션이 사용할 일반 설정값을 이미지와 분리해서 관리하는 Kubernetes 리소스입니다.
+## 9. 서로 다른 Namespace에서 같은 이름의 리소스를 만들 수 있나요?
 
-11. ConfigMap에는 어떤 값을 저장할 수 있나요?
-정답: DB 주소, DB 포트, 실행 환경, 로그 레벨 등 일반 설정값을 저장할 수 있습니다.
+**정답:**  
+네. Namespace가 다르면 같은 이름의 리소스가 각각 존재할 수 있습니다.
 
-12. ConfigMap에 저장할 수 있는 일반 설정의 예를 들어보세요.
-정답:
+---
+
+## 10. ConfigMap이란 무엇인가요?
+
+**정답:**  
+애플리케이션이 사용할 일반 설정값을 이미지와 분리해서 관리하는 Kubernetes 리소스입니다.
+
+---
+
+## 11. ConfigMap에는 어떤 값을 저장할 수 있나요?
+
+**정답:**  
+DB 주소, DB 포트, 실행 환경, 로그 레벨 등 일반 설정값을 저장할 수 있습니다.
+
+---
+
+## 12. ConfigMap에 저장할 수 있는 일반 설정의 예를 들어보세요.
+
+**정답:**
+
+```text
 APP_ENV=production
 LOG_LEVEL=INFO
 DB_HOST=mysql-service
 DB_PORT=3306
+```
 
-13. APP_ENV나 LOG_LEVEL이라는 이름은 Kubernetes가 정해놓은 이름인가요?
-정답: 아닙니다. 애플리케이션과 운영자가 필요에 따라 정하는 설정 이름입니다.
+---
 
-14. 일반적으로 환경변수 이름을 APP_ENV처럼 대문자와 언더바(_)로 작성하는 이유는 무엇인가요?
-정답: 환경변수 이름을 표현할 때 흔히 사용하는 관례이기 때문입니다.
+## 13. `APP_ENV`나 `LOG_LEVEL`이라는 이름은 Kubernetes가 정해놓은 이름인가요?
 
-15. ConfigMap을 사용하는 가장 중요한 이유는 무엇인가요?
-정답: 애플리케이션 이미지와 환경별 설정값을 분리하기 위해서입니다.
+**정답:**  
+아닙니다. 애플리케이션과 운영자가 필요에 따라 정하는 설정 이름입니다.
 
-16. ConfigMap을 사용하면 개발환경과 운영환경에서 같은 이미지를 사용할 수 있나요?
-정답: 네. 이미지는 그대로 두고 ConfigMap의 설정값만 다르게 사용할 수 있습니다.
+---
 
-17. app-config라는 ConfigMap을 생성하는 예시는 무엇인가요?
-정답:
+## 14. 일반적으로 환경변수 이름을 `APP_ENV`처럼 대문자와 언더바(`_`)로 작성하는 이유는 무엇인가요?
+
+**정답:**  
+환경변수 이름을 표현할 때 흔히 사용하는 관례이기 때문입니다.
+
+---
+
+## 15. ConfigMap을 사용하는 가장 중요한 이유는 무엇인가요?
+
+**정답:**  
+애플리케이션 이미지와 환경별 설정값을 분리하기 위해서입니다.
+
+---
+
+## 16. ConfigMap을 사용하면 개발환경과 운영환경에서 같은 이미지를 사용할 수 있나요?
+
+**정답:**  
+네. 이미지는 그대로 두고 ConfigMap의 설정값만 다르게 사용할 수 있습니다.
+
+---
+
+## 17. `app-config`라는 ConfigMap을 생성하는 예시는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl create configmap app-config \
   --from-literal=APP_ENV=production \
   --from-literal=LOG_LEVEL=INFO \
   -n portfolio
+```
 
-18. ConfigMap 목록을 확인하는 명령어는 무엇인가요?
-정답:
+---
+
+## 18. ConfigMap 목록을 확인하는 명령어는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl get configmap -n portfolio
+```
+
 또는
+
+```bash
 kubectl get cm -n portfolio
+```
 
-19. ConfigMap의 실제 내용을 YAML 형태로 확인하려면 어떻게 하나요?
-정답:
+---
+
+## 19. ConfigMap의 실제 내용을 YAML 형태로 확인하려면 어떻게 하나요?
+
+**정답:**
+
+```bash
 kubectl get configmap app-config -n portfolio -o yaml
+```
 
-20. ConfigMap을 직접 수정하는 명령어는 무엇인가요?
-정답:
+---
+
+## 20. ConfigMap을 직접 수정하는 명령어는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl edit configmap app-config -n portfolio
+```
 
-21. ConfigMap을 만들기만 하면 Pod가 자동으로 그 설정을 사용하나요?
-정답: 아닙니다. Pod 또는 Deployment의 Pod Template에서 해당 ConfigMap을 참조해야 합니다.
+---
 
-22. Pod에 환경변수를 정의할 때 사용하는 YAML 항목은 무엇인가요?
-정답: env
+## 21. ConfigMap을 만들기만 하면 Pod가 자동으로 그 설정을 사용하나요?
 
-23. valueFrom의 의미는 무엇인가요?
-정답: 환경변수 값을 YAML에 직접 적지 않고 다른 Kubernetes 리소스에서 가져오겠다는 의미입니다.
+**정답:**  
+아닙니다. Pod 또는 Deployment의 Pod Template에서 해당 ConfigMap을 참조해야 합니다.
 
-24. ConfigMap에서 값을 가져올 때 사용하는 항목은 무엇인가요?
-정답: configMapKeyRef
+---
 
-25. 다음 구조의 의미는 무엇인가요?
+## 22. Pod에 환경변수를 정의할 때 사용하는 YAML 항목은 무엇인가요?
 
+**정답:**  
+`env`
+
+---
+
+## 23. `valueFrom`의 의미는 무엇인가요?
+
+**정답:**  
+환경변수 값을 YAML에 직접 적지 않고 다른 Kubernetes 리소스에서 가져오겠다는 의미입니다.
+
+---
+
+## 24. ConfigMap에서 값을 가져올 때 사용하는 항목은 무엇인가요?
+
+**정답:**  
+`configMapKeyRef`
+
+---
+
+## 25. 다음 구조의 의미는 무엇인가요?
+
+```yaml
 env:
   - name: APP_ENV
     valueFrom:
       configMapKeyRef:
         name: app-config
         key: APP_ENV
+```
 
-정답: app-config라는 ConfigMap에서 APP_ENV 값을 가져와 Container의 APP_ENV 환경변수로 사용하겠다는 의미입니다.
+**정답:**  
+`app-config`라는 ConfigMap에서 `APP_ENV` 값을 가져와 Container의 `APP_ENV` 환경변수로 사용하겠다는 의미입니다.
 
-26. ConfigMap 값을 환경변수로 사용하고 있는 실행 중인 Pod가 있을 때 ConfigMap만 수정하면 Pod의 환경변수가 즉시 변경되나요?
-정답: 일반적으로 환경변수로 주입된 값은 실행 중인 Container에 자동 반영되지 않습니다. 새 값을 사용하려면 Pod를 재생성하거나 Deployment를 재시작해야 합니다.
+---
 
-27. ConfigMap과 Pod는 서로 다른 Namespace에 있어도 바로 참조할 수 있나요?
-정답: 일반적인 ConfigMap 참조에서는 같은 Namespace에 있어야 합니다.
+## 26. ConfigMap 값을 환경변수로 사용하고 있는 실행 중인 Pod가 있을 때 ConfigMap만 수정하면 Pod의 환경변수가 즉시 변경되나요?
 
-28. ConfigMap이 존재하지 않거나 필요한 Key가 없으면 Pod에서 어떤 오류가 발생할 수 있나요?
-정답: CreateContainerConfigError가 발생할 수 있습니다.
+**정답:**  
+일반적으로 환경변수로 주입된 값은 실행 중인 Container에 자동 반영되지 않습니다. 새 값을 사용하려면 Pod를 재생성하거나 Deployment를 재시작해야 합니다.
 
-29. Pod가 CreateContainerConfigError 상태일 때 원인을 확인하는 대표적인 명령어는 무엇인가요?
-정답:
+예:
+
+```bash
+kubectl rollout restart deployment <Deployment이름> -n <Namespace>
+```
+
+---
+
+## 27. ConfigMap과 Pod는 서로 다른 Namespace에 있어도 바로 참조할 수 있나요?
+
+**정답:**  
+일반적인 ConfigMap 참조에서는 같은 Namespace에 있어야 합니다.
+
+---
+
+## 28. ConfigMap이 존재하지 않거나 필요한 Key가 없으면 Pod에서 어떤 오류가 발생할 수 있나요?
+
+**정답:**  
+`CreateContainerConfigError`가 발생할 수 있습니다.
+
+---
+
+## 29. Pod가 `CreateContainerConfigError` 상태일 때 원인을 확인하는 대표적인 명령어는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl describe pod <Pod이름> -n <Namespace>
+```
 
-30. kubectl describe에서 특히 확인해야 하는 부분은 무엇인가요?
-정답: 맨 아래의 Events 부분
+예:
 
-31. 실제 프로젝트에서도 ConfigMap 테스트를 위해 Pod를 항상 직접 만들어야 하나요?
-정답: 아닙니다. 실제 프로젝트에서는 보통 Deployment의 Pod Template에서 ConfigMap을 참조합니다.
+```bash
+kubectl describe pod configmap-test -n portfolio
+```
 
-32. Deployment를 사용하는 경우 ConfigMap 연결 설정은 어디에 작성하나요?
-정답: Deployment의 spec.template.spec.containers 아래에 작성합니다.
+---
 
-33. Deployment에서 replicas: 3이고 ConfigMap을 참조하면 몇 개의 Pod가 ConfigMap 설정을 사용할 수 있나요?
-정답: Deployment가 생성한 3개의 Pod 모두 같은 ConfigMap 설정을 사용할 수 있습니다.
+## 30. `kubectl describe`에서 특히 확인해야 하는 부분은 무엇인가요?
 
-34. Secret이란 무엇인가요?
-정답: 비밀번호, 토큰, 인증정보 등의 민감한 설정값을 일반 설정과 분리해서 관리하는 Kubernetes 리소스입니다.
+**정답:**  
+출력 맨 아래의 `Events` 부분입니다.
 
-35. Secret에 저장하기 적합한 값의 예는 무엇인가요?
-정답:
+---
+
+## 31. 실제 프로젝트에서도 ConfigMap 테스트를 위해 Pod를 항상 직접 만들어야 하나요?
+
+**정답:**  
+아닙니다. 실제 프로젝트에서는 보통 Deployment의 Pod Template에서 ConfigMap을 참조합니다.
+
+---
+
+## 32. Deployment를 사용하는 경우 ConfigMap 연결 설정은 어디에 작성하나요?
+
+**정답:**  
+Deployment의 Pod Template 내부에 작성합니다.
+
+구조:
+
+```text
+spec
+└─ template
+   └─ spec
+      └─ containers
+         └─ env
+```
+
+예:
+
+```yaml
+spec:
+  template:
+    spec:
+      containers:
+        - name: spring
+          image: my-spring-app:v1
+
+          env:
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_ENV
+```
+
+---
+
+## 33. Deployment에서 `replicas: 3`이고 ConfigMap을 참조하면 몇 개의 Pod가 ConfigMap 설정을 사용할 수 있나요?
+
+**정답:**  
+Deployment가 생성한 3개의 Pod 모두 같은 ConfigMap 설정을 사용할 수 있습니다.
+
+```text
+ConfigMap
+   ↓
+Pod 1
+Pod 2
+Pod 3
+```
+
+---
+
+# Secret
+
+## 34. Secret이란 무엇인가요?
+
+**정답:**  
+비밀번호, 토큰, 인증정보 등의 민감한 설정값을 일반 설정과 분리해서 관리하는 Kubernetes 리소스입니다.
+
+---
+
+## 35. Secret에 저장하기 적합한 값의 예는 무엇인가요?
+
+**정답:**
+
+```text
 DB_USERNAME
 DB_PASSWORD
 API_TOKEN
-인증서 관련 정보 등
+인증서 관련 정보
+```
 
-36. ConfigMap과 Secret의 가장 기본적인 차이는 무엇인가요?
-정답:
+---
+
+## 36. ConfigMap과 Secret의 가장 기본적인 차이는 무엇인가요?
+
+**정답:**
+
+```text
 ConfigMap = 일반 설정
-Secret = 민감한 설정
+Secret    = 민감한 설정
+```
 
-37. ConfigMap과 Secret을 분리하는 주된 이유는 무엇인가요?
-정답: 민감정보를 일반 설정과 분리하여 보안, 권한 관리, 설정 관리를 더 체계적으로 하기 위해서입니다.
+---
 
-38. db-secret이라는 Secret을 만드는 예시는 무엇인가요?
-정답:
+## 37. ConfigMap과 Secret을 분리하는 주된 이유는 무엇인가요?
+
+**정답:**  
+민감정보를 일반 설정과 분리하여 보안, 권한 관리, 설정 관리를 더 체계적으로 하기 위해서입니다.
+
+---
+
+## 38. `db-secret`이라는 Secret을 만드는 예시는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl create secret generic db-secret \
   --from-literal=DB_USERNAME=appuser \
   --from-literal=DB_PASSWORD=1234 \
   -n portfolio
+```
 
-39. Secret 목록을 확인하는 명령어는 무엇인가요?
-정답:
+---
+
+## 39. Secret 목록을 확인하는 명령어는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl get secret -n portfolio
+```
 
-40. Secret의 상세 정보를 확인하는 명령어는 무엇인가요?
-정답:
+---
+
+## 40. Secret의 상세 정보를 확인하는 명령어는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl describe secret db-secret -n portfolio
+```
 
-41. Secret을 YAML 형태로 확인하는 명령어는 무엇인가요?
-정답:
+---
+
+## 41. Secret을 YAML 형태로 확인하는 명령어는 무엇인가요?
+
+**정답:**
+
+```bash
 kubectl get secret db-secret -n portfolio -o yaml
+```
 
-42. Secret의 data 값이 MTIzNA==처럼 보이는 이유는 무엇인가요?
-정답: 기본적으로 Base64 방식으로 인코딩되어 표현되기 때문입니다.
+---
 
-43. Base64는 암호화인가요?
-정답: 아닙니다. Base64는 데이터를 표현하기 위한 인코딩 방식입니다.
+## 42. Secret의 `data` 값이 `MTIzNA==`처럼 보이는 이유는 무엇인가요?
 
-44. Kubernetes Secret에 값을 넣기만 하면 완벽하게 안전해지나요?
-정답: 아닙니다. 실제 운영에서는 RBAC, etcd 암호화, 외부 Secret Manager 등 추가적인 보안 대책을 사용할 수 있습니다.
+**정답:**  
+기본적으로 Base64 방식으로 인코딩되어 표현되기 때문입니다.
 
-45. Pod에서 Secret 값을 가져올 때 사용하는 항목은 무엇인가요?
-정답: secretKeyRef
+예:
 
-46. 다음 YAML의 의미는 무엇인가요?
+```text
+1234
+↓ Base64 인코딩
+MTIzNA==
+```
 
+---
+
+## 43. Base64는 암호화인가요?
+
+**정답:**  
+아닙니다. Base64는 데이터를 표현하기 위한 인코딩 방식입니다.
+
+---
+
+## 44. Kubernetes Secret에 값을 넣기만 하면 완벽하게 안전해지나요?
+
+**정답:**  
+아닙니다. 실제 운영에서는 RBAC, etcd 암호화, 외부 Secret Manager 등 추가적인 보안 대책을 사용할 수 있습니다.
+
+---
+
+## 45. Pod에서 Secret 값을 가져올 때 사용하는 항목은 무엇인가요?
+
+**정답:**  
+`secretKeyRef`
+
+---
+
+## 46. 다음 YAML의 의미는 무엇인가요?
+
+```yaml
 env:
   - name: DB_PASSWORD
     valueFrom:
       secretKeyRef:
         name: db-secret
         key: DB_PASSWORD
+```
 
-정답: db-secret이라는 Secret에서 DB_PASSWORD 값을 가져와 Container의 DB_PASSWORD 환경변수로 사용한다는 의미입니다.
+**정답:**  
+`db-secret`이라는 Secret에서 `DB_PASSWORD` 값을 가져와 Container의 `DB_PASSWORD` 환경변수로 사용한다는 의미입니다.
 
-47. ConfigMap과 Secret을 각각 Pod에 연결할 때 사용하는 참조 이름은 무엇인가요?
-정답:
+---
+
+## 47. ConfigMap과 Secret을 각각 Pod에 연결할 때 사용하는 참조 이름은 무엇인가요?
+
+**정답:**
+
+```text
 ConfigMap → configMapKeyRef
-Secret → secretKeyRef
+Secret    → secretKeyRef
+```
 
-48. 실제 프로젝트에서 일반 설정과 민감 설정을 어떻게 나누는 것이 좋나요?
-정답:
+---
 
-ConfigMap
-- APP_ENV
-- LOG_LEVEL
-- DB_HOST
-- DB_PORT
+## 48. 실제 프로젝트에서 일반 설정과 민감 설정을 어떻게 나누는 것이 좋나요?
 
-Secret
-- DB_USERNAME
-- DB_PASSWORD
-- API_TOKEN
+**정답:**
 
-49. 실제 프로젝트에서 우리가 직접 만드는 Kubernetes 리소스의 예는 무엇인가요?
-정답:
+### ConfigMap
+
+```text
+APP_ENV
+LOG_LEVEL
+DB_HOST
+DB_PORT
+```
+
+### Secret
+
+```text
+DB_USERNAME
+DB_PASSWORD
+API_TOKEN
+```
+
+---
+
+# 실제 프로젝트 연결
+
+## 49. 실제 프로젝트에서 우리가 직접 만드는 Kubernetes 리소스의 예는 무엇인가요?
+
+**정답:**
+
+```text
 Namespace
 ConfigMap
 Secret
 Deployment
 Service
+```
 
-50. Deployment를 만들었을 때 보통 직접 만들지 않아도 자동으로 생성되는 것은 무엇인가요?
-정답:
-ReplicaSet
-Pod
+---
 
-51. 실제 프로젝트에서 ConfigMap과 Secret을 사용하는 전체 흐름은 어떻게 되나요?
-정답:
+## 50. Deployment를 만들었을 때 보통 직접 만들지 않아도 자동으로 생성되는 것은 무엇인가요?
 
-ConfigMap / Secret 생성
-↓
-Deployment 작성
-↓
-Deployment의 Pod Template에서 ConfigMap / Secret 참조
-↓
-ReplicaSet 자동 생성
-↓
-Pod 자동 생성
-↓
-Container가 설정값을 환경변수로 사용
+**정답:**
 
-52. ConfigMap과 Secret은 Deployment의 하위 리소스인가요?
-정답: 아닙니다. 각각 독립적인 Kubernetes 리소스이며 Deployment의 Pod Template에서 참조해서 사용합니다.
-
-53. Namespace와 Deployment, ConfigMap, Secret의 관계를 간단히 설명하면?
-정답: Namespace라는 논리적 공간 안에 Deployment, ConfigMap, Secret 등의 리소스를 각각 생성해서 관리할 수 있습니다.
-
-54. 7장에서 배운 전체 구조를 표현하면 어떻게 되나요?
-정답:
-
-Namespace
-│
-├─ ConfigMap ─────┐
-│                 ↓
-├─ Secret ───────→ Pod
-│                 ↑
-├─ Deployment
-│     ↓
-│  ReplicaSet
-│     ↓
-│   Pod
-│
-└─ Service → Pod에 접근
-
-
-[7장 핵심 압축]
-
-Namespace
-= Kubernetes 리소스를 논리적으로 구분하는 공간
-
-ConfigMap
-= 일반 설정값 관리
-
-Secret
-= 민감한 설정값 관리
-
-configMapKeyRef
-= ConfigMap에서 값 가져오기
-
-secretKeyRef
-= Secret에서 값 가져오기
-
-실제 프로젝트에서는
-
-ConfigMap / Secret
-        ↓
-Deployment의 Pod Template에서 참조
-        ↓
-ReplicaSet 자동 생성
-        ↓
-Pod 자동 생성
-        ↓
-Container에서 환경변수로 사용
-
-가장 중요한 구조:
-
+```text
 Deployment
-↓
-ReplicaSet
-↓
-Pod
-↓
-Container
+    ↓
+ReplicaSet 자동 생성
+    ↓
+Pod 자동 생성
+```
 
-ConfigMap / Secret
-↓
-Pod에 설정 전달
+따라서 직접 만드는 것은 보통 Deployment이고, ReplicaSet과 Pod는 Deployment에 의해 관리됩니다.
 
-Namespace
-= 이 리소스들을 논리적으로 구분
+---
+
+## 51. 실제 프로젝트에서 ConfigMap과 Secret을 사용하는 전체 흐름은 어떻게 되나요?
+
+**정답:**
+
+```text
+ConfigMap / Secret 생성
+        ↓
+Deployment 작성
+        ↓
+Deployment의 Pod Template에서
+ConfigMap / Secret 참조
+        ↓
+ReplicaSet 자동 생성
+        ↓
+Pod 자동 생성
+        ↓
+Container가 설정값을 환경변수로 사용
+```
+
+---
+
+## 52. ConfigMap과 Secret은 Deployment의 하위 리소스인가요?
+
+**정답:**  
+아닙니다.
+
+ConfigMap, Secret, Deployment는 각각 독립적인 Kubernetes 리소스입니다.
+
+Deployment의 Pod Template에서 ConfigMap과 Secret을 **참조해서 사용**합니다.
+
+```text
+ConfigMap ───┐
+             ↓
+Secret ────→ Pod
+             ↑
+Deployment → ReplicaSet → Pod
+```
+
+---
+
+## 53. Namespace와 Deployment, ConfigMap, Secret의 관계를 간단히 설명하면?
+
+**정답:**  
+Namespace라는 논리적 공간 안에 Deployment, ConfigMap, Secret 등의 리소스를 각각 생성해서 관리할 수 있습니다.
+
+```text
+portfolio Namespace
+│
+├─ ConfigMap
+├─ Secret
+├─ Deployment
+├─ Service
+└─ Pod
+```
+
+---
+
+## 54. 7장에서 배운 전체 구조를 표현하면 어떻게 되나요?
+
+**정답:**
+
+```text
+Kubernetes Cluster
+│
+└─ Namespace
+   │
+   ├─ ConfigMap ───────┐
+   │                   ↓
+   ├─ Secret ────────→ Pod
+   │                   ↑
+   ├─ Deployment
+   │     ↓
+   │  ReplicaSet
+   │     ↓
+   │    Pod
+   │     ↓
+   │  Container
+   │
+   └─ Service
+         ↓
+       Pod에 접근
+```
+
+---
+
+# 7장 핵심 압축
+
+## Namespace
+
+```text
+K
+
 
 </details>
 
