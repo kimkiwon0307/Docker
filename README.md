@@ -2134,8 +2134,98 @@ Namespace
 
 </details>
 
+<details>
+<summary><b> 8장 인그레스(Ingress)</b></summary>
+
+## Ingress를 사용하는 이유
+1. 외부에서 Pod에 접근하려면 주로 NodePort나 LB를 배웠다.
+2. 실제 서비스는 여러 서비스가 있다
+3. NodePort를 각각 만들면 각 서비스 별로 포트를 입력하며 접속해야한다.
+4. 이런것을 처리하는게 Ingress이다.
+
+## Ingress를 앞에 둔다.
+1. Ingress가 요청을 보고 어느 서비스로 갈지 나눠주는 거다.
+2. Ingress는 외부 HTTP/HTTPS 요청을 보고 어떤 Service로 보낼지 결정하는 입구이다.
+3. Ingress는 Pod를 직접 찾아가지 않는다.
+
+## LoadBalancer를 서비스마다 만들면?
+1. 비용적으로 안좋다.
+
+## Ingress는 무엇을 보고 구분하나요?
+1. URL 경로(Path) : example.com/usr > user-service
+2. Path 기반 Routing이라고 생각하면 된다.
+3. 도메인(Host)
+4. 경로 또는 도메인을 보고 어떤 Service로 보낼지 결정한다.
+
+## Ingress는 규칙이고 Ingress Controller는 규칙을 실제로 실행하는 프로그램이다.
+## Ingress를 쓰는 가장 큰이유
+1. 여러 Service를 하나의 외부 진입점에서 URL이나 도메인 기준으로 나눠 연결하기 위해
+
+## 인그레스의 구조
+1. 외부사용자 → Ingress Controller → Ingress 규칙 → Service → Pod
+2. Ingress와 Ingress Controller는 서로 다른 것이다.
+
+## Ingress는 규칙이다.
+1. /game이면 game-service로 보내라
+2. ingress 자체가 직접 패킷을 받아서 움직이는 프로그램이 아니다.
+
+## Ingress Controller는 실제로 움직이는 프로그램이다.
+1. Ingress Controller는 Kubernetes 내부에서 계속 실행되고 있다.
+2. Ingress 를 만들면 Controller가 그걸 읽는다.
+
+## Service는 왜 또 필요할까?
+1. Ingress가 Pod IP를 기억하면 귀찮아서 Service를 둔다.
+2. Ingress는 Service만 알면된다.
+
+ ## 실제 요청 흐름
+ 1. 사용자 요청
+ 2. Ingress Controller가 요청 수신
+ 3. Ingress 규칙 확인 : /game → game-service
+ 4. game-service로 전달
+ 5. Service가 Pod 선택
+ 6. Spring Pod에서 요청 처리
+
+## Deployment까지 포함하면?
+1. 사용자 → Ingress Controller → Ingress → Service → Pod → Controller : 트래픽 흐름 : Pod로 트래픽을 전달
+2. Deployment → ReplicaSet → Pod : 관리 흐름 : Pod를 생성하고 유지
+3. 이 둘은 완전히 다른 역할이다.
+
+## 직접 만드는 것 / 자동으로 생기는 것
+1. 직접 만드는 것 : Deployment, Service, Ingress
+2. 자동으로 생기는 것 : ReplicaSet, Pod
+
+## Ingress Controller는 어디에 있나요
+1. Kubernetes 안에서는 결국 Pod로 실행한다.
+2. Kubernetes 위에서 실행되는 하나의 애플리케이션이다.
+
+## Ingress YAML 기본 구조
+``` text
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: game-ingress
+
+spec:
+  rules:
+    - host: example.com 
+      http:
+        paths:
+          - path: /game
+            pathType: Prefix
+            backend:
+              service:
+                name: game-service
+                port:
+                  number: 80
+```
+
+## Ingress Controller 설치
+1. 설치 파일 : Control Plane 서버에서 실행 : git clone https://github.com/nginx/kubernetes-ingress.git --branch v5.6.3
+2. cd kubernetes-ingress
 
 
+</details>
 
 
 
