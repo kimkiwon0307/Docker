@@ -4812,6 +4812,1884 @@ Namespace
 
 > **Namespace는 리소스를 구분하고, ConfigMap과 Secret은 Pod가 사용할 설정을 외부에서 제공하며, Deployment는 ReplicaSet과 Pod를 생성·관리하고, Service는 해당 Pod에 접근할 수 있는 안정적인 창구를 제공합니다.**
 
+# Kubernetes 7장 - Namespace, ConfigMap, Secret
+
+## 1. 7장 전체 핵심 구조
+
+7장의 핵심은 Kubernetes Resource를 논리적으로 분리하고,
+애플리케이션 설정과 민감정보를 Pod와 분리해서 관리하는 것이다.
+
+```text
+                  Namespace
+                     │
+        ┌────────────┼────────────┐
+        │            │            │
+    ConfigMap     Deployment     Secret
+        │            │            │
+        │        ReplicaSet       │
+        │            │            │
+        └──────────→ Pod ←────────┘
+```
+
+핵심:
+
+```text
+Namespace
+= 리소스의 논리적 구역
+
+ConfigMap
+= 일반 설정정보
+
+Secret
+= 민감정보
+```
+
+---
+
+# 2. Namespace란?
+
+Namespace는 하나의 Kubernetes Cluster 안에서
+Resource를 논리적으로 구분하는 기능이다.
+
+예:
+
+```text
+Kubernetes Cluster
+
+├─ Namespace: dev
+│  ├─ Deployment
+│  ├─ Service
+│  └─ Pod
+│
+├─ Namespace: staging
+│  ├─ Deployment
+│  ├─ Service
+│  └─ Pod
+│
+└─ Namespace: prod
+   ├─ Deployment
+   ├─ Service
+   └─ Pod
+```
+
+Namespace는 물리적으로 Node를 분리하는 기능이 아니다.
+
+```text
+Namespace
+= 논리적 분리
+
+Node
+= 실제 Pod가 실행되는 서버
+```
+
+따라서:
+
+```text
+dev Pod  → worker1
+prod Pod → worker1
+```
+
+처럼 서로 다른 Namespace의 Pod가 같은 Node에서 실행될 수도 있다.
+
+---
+
+# 3. Namespace가 필요한 이유
+
+하나의 Cluster 안에 많은 Resource가 존재하면 관리가 복잡해진다.
+
+예:
+
+```text
+web
+api
+db
+redis
+prometheus
+grafana
+```
+
+Namespace를 사용하면:
+
+```text
+project-a
+├─ web
+├─ api
+└─ db
+
+project-b
+├─ web
+├─ api
+└─ db
+```
+
+처럼 구분할 수 있다.
+
+Namespace가 다르면 같은 Resource 이름도 사용할 수 있다.
+
+```text
+dev Namespace
+└─ Deployment: web
+
+prod Namespace
+└─ Deployment: web
+```
+
+---
+
+# 4. Namespace 확인
+
+전체 Namespace 확인:
+
+```bash
+kubectl get namespaces
+```
+
+줄임:
+
+```bash
+kubectl get ns
+```
+
+기본적으로 존재하는 Namespace 예:
+
+```text
+default
+kube-system
+kube-public
+kube-node-lease
+```
+
+---
+
+# 5. default Namespace
+
+명령어에서 Namespace를 지정하지 않으면 일반적으로
+`default` Namespace를 사용한다.
+
+```bash
+kubectl get pods
+```
+
+는 사실상:
+
+```bash
+kubectl get pods -n default
+```
+
+를 조회하는 것과 같다.
+
+특정 Namespace:
+
+```bash
+kubectl get pods -n ch07-practice
+```
+
+전체 Namespace:
+
+```bash
+kubectl get pods -A
+```
+
+자세히:
+
+```bash
+kubectl get pods -A -o wide
+```
+
+---
+
+# 6. Namespace 생성 실습
+
+```bash
+kubectl create namespace ch07-practice
+```
+
+확인:
+
+```bash
+kubectl get ns
+```
+
+Pod 생성:
+
+```bash
+kubectl run namespace-test \
+  --image=nginx \
+  -n ch07-practice
+```
+
+확인:
+
+```bash
+kubectl get pods -n ch07-practice
+```
+
+Node까지 확인:
+
+```bash
+kubectl get pods -n ch07-practice -o wide
+```
+
+여기서:
+
+```text
+Namespace = Resource가 속한 논리적 공간
+Node      = Pod가 실제 실행되는 서버
+```
+
+라는 차이를 이해한다.
+
+---
+
+# 7. Namespace와 Scheduling은 다르다
+
+Namespace를:
+
+```text
+dev
+prod
+```
+
+로 나눴다고 해서 자동으로:
+
+```text
+dev  → worker1
+prod → worker2
+```
+
+처럼 Node가 분리되는 것은 아니다.
+
+Node 선택은 이후 배우는:
+
+```text
+nodeSelector
+Node Affinity
+Taint / Toleration
+```
+
+같은 Scheduling 기능과 관련된다.
+
+---
+
+# 8. ConfigMap이란?
+
+ConfigMap은 애플리케이션의 일반 설정값을
+Container Image와 분리해서 관리하기 위한 Resource이다.
+
+예:
+
+```text
+APP_ENV=production
+LOG_LEVEL=INFO
+```
+
+애플리케이션 Image 내부에 설정을 직접 넣는 대신:
+
+```text
+Application Image
+       +
+   ConfigMap
+```
+
+으로 분리한다.
+
+구조:
+
+```text
+ConfigMap
+    ↓
+   Pod
+    ↓
+Container
+```
+
+---
+
+# 9. ConfigMap에 넣을 수 있는 값
+
+예:
+
+```text
+APP_ENV
+LOG_LEVEL
+DB_HOST
+API_URL
+SPRING_PROFILES_ACTIVE
+```
+
+등이다.
+
+중요:
+
+```text
+APP_ENV
+LOG_LEVEL
+```
+
+은 Kubernetes 예약어가 아니다.
+
+사용자가 원하는 이름으로 정의한 설정값이다.
+
+---
+
+# 10. ConfigMap 생성 실습
+
+```bash
+kubectl create configmap app-config \
+  --from-literal=APP_ENV=production \
+  --from-literal=LOG_LEVEL=INFO \
+  -n ch07-practice
+```
+
+확인:
+
+```bash
+kubectl get configmap -n ch07-practice
+```
+
+줄임:
+
+```bash
+kubectl get cm -n ch07-practice
+```
+
+내용 확인:
+
+```bash
+kubectl get configmap app-config \
+  -n ch07-practice \
+  -o yaml
+```
+
+예:
+
+```yaml
+data:
+  APP_ENV: production
+  LOG_LEVEL: INFO
+```
+
+---
+
+# 11. ConfigMap 오타 실습
+
+잘못 생성:
+
+```bash
+kubectl create configmap app-config \
+  --from-literal=AAPP_ENV=production \
+  --from-literal=LOG_LEVEL=INFO \
+  -n ch07-practice
+```
+
+그러면 실제 key는:
+
+```text
+AAPP_ENV
+```
+
+가 된다.
+
+Pod가:
+
+```yaml
+key: APP_ENV
+```
+
+를 요구하면 해당 key를 찾을 수 없다.
+
+ConfigMap 삭제:
+
+```bash
+kubectl delete configmap app-config -n ch07-practice
+```
+
+정상 생성:
+
+```bash
+kubectl create configmap app-config \
+  --from-literal=APP_ENV=production \
+  --from-literal=LOG_LEVEL=INFO \
+  -n ch07-practice
+```
+
+---
+
+# 12. ConfigMap을 Pod 환경변수로 사용
+
+예:
+
+```yaml
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: configmap-test
+  namespace: ch07-practice
+
+spec:
+  containers:
+    - name: test
+      image: busybox:1.36
+
+      command:
+        - sh
+        - -c
+        - |
+          echo "APP_ENV=$APP_ENV"
+          echo "LOG_LEVEL=$LOG_LEVEL"
+          sleep 3600
+
+      env:
+        - name: APP_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: APP_ENV
+
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: LOG_LEVEL
+```
+
+적용:
+
+```bash
+kubectl apply -f configmap-ch07-pod.yaml
+```
+
+확인:
+
+```bash
+kubectl get pods -n ch07-practice
+```
+
+로그:
+
+```bash
+kubectl logs configmap-test -n ch07-practice
+```
+
+결과:
+
+```text
+APP_ENV=production
+LOG_LEVEL=INFO
+```
+
+---
+
+# 13. configMapKeyRef 구조
+
+```yaml
+env:
+  - name: APP_ENV
+    valueFrom:
+      configMapKeyRef:
+        name: app-config
+        key: APP_ENV
+```
+
+의미:
+
+```text
+Container 환경변수 이름
+APP_ENV
+    ↓
+app-config ConfigMap에서
+    ↓
+APP_ENV key의 값을 가져온다.
+```
+
+즉:
+
+```text
+ConfigMap
+APP_ENV=production
+       ↓
+Pod
+       ↓
+Container
+APP_ENV=production
+```
+
+---
+
+# 14. Container 내부에서 확인
+
+```bash
+kubectl exec -it configmap-test \
+  -n ch07-practice \
+  -- sh
+```
+
+확인:
+
+```bash
+echo $APP_ENV
+```
+
+```bash
+echo $LOG_LEVEL
+```
+
+결과:
+
+```text
+production
+INFO
+```
+
+---
+
+# 15. 기존 Pod 수정 오류
+
+이미 만들어진 Pod의 `command` 등을 YAML에서 변경하고:
+
+```bash
+kubectl apply -f configmap-ch07-pod.yaml
+```
+
+을 실행했을 때 다음 오류를 확인했다.
+
+```text
+pod updates may not change fields...
+```
+
+Pod의 많은 Spec 필드는 생성 이후 직접 변경할 수 없다.
+
+따라서 직접 만든 Pod의 경우:
+
+```text
+Pod 삭제
+↓
+YAML 수정
+↓
+Pod 재생성
+```
+
+방식으로 처리한다.
+
+```bash
+kubectl delete pod configmap-test -n ch07-practice
+```
+
+```bash
+kubectl apply -f configmap-ch07-pod.yaml
+```
+
+---
+
+# 16. 직접 Pod와 Deployment 차이
+
+직접 만든 Pod:
+
+```text
+Pod
+```
+
+Pod Spec을 크게 변경하기 어렵기 때문에
+필요하면 삭제 후 재생성해야 한다.
+
+Deployment 사용:
+
+```text
+Deployment
+   ↓
+ReplicaSet
+   ↓
+Pod
+```
+
+Deployment의 Pod Template을 변경하면
+새로운 Pod를 생성해 교체한다.
+
+따라서 일반적인 애플리케이션 운영에서는
+Pod를 직접 관리하기보다 Deployment를 사용한다.
+
+---
+
+# 17. ConfigMap 변경 실험
+
+기존:
+
+```text
+LOG_LEVEL=INFO
+```
+
+ConfigMap 수정:
+
+```bash
+kubectl edit configmap app-config -n ch07-practice
+```
+
+변경:
+
+```yaml
+data:
+  APP_ENV: production
+  LOG_LEVEL: DEBUG
+```
+
+ConfigMap 확인:
+
+```bash
+kubectl get configmap app-config \
+  -n ch07-practice \
+  -o yaml
+```
+
+---
+
+# 18. ConfigMap 변경과 환경변수
+
+ConfigMap을 환경변수 방식으로 주입한 경우:
+
+```text
+ConfigMap 변경
+      ↓
+기존 Container 환경변수
+자동 변경 X
+```
+
+Pod가 시작될 때:
+
+```text
+ConfigMap
+↓
+환경변수 생성
+↓
+Container 실행
+```
+
+되기 때문이다.
+
+예:
+
+```text
+Pod 생성 시
+
+LOG_LEVEL=INFO
+       ↓
+Container 환경변수
+LOG_LEVEL=INFO
+```
+
+그 후 ConfigMap을:
+
+```text
+LOG_LEVEL=DEBUG
+```
+
+로 바꿔도 기존 Container는:
+
+```text
+LOG_LEVEL=INFO
+```
+
+를 계속 가지고 있을 수 있다.
+
+새 값을 적용하려면 Pod를 재생성하거나
+Deployment를 재시작하는 방식 등을 사용한다.
+
+---
+
+# 19. Secret이란?
+
+Secret은 비밀번호, Token, API Key 등
+민감한 정보를 관리하기 위한 Kubernetes Resource이다.
+
+예:
+
+```text
+DB_USERNAME=appuser
+DB_PASSWORD=1234
+```
+
+구조:
+
+```text
+Secret
+   ↓
+  Pod
+   ↓
+Container
+```
+
+---
+
+# 20. ConfigMap과 Secret 차이
+
+```text
+ConfigMap
+= 일반 설정정보
+
+Secret
+= 민감정보
+```
+
+예:
+
+```text
+ConfigMap
+├─ APP_ENV
+├─ LOG_LEVEL
+└─ API_URL
+
+Secret
+├─ DB_PASSWORD
+├─ API_KEY
+└─ TOKEN
+```
+
+---
+
+# 21. Secret 생성 실습
+
+```bash
+kubectl create secret generic db-secret \
+  --from-literal=DB_USERNAME=appuser \
+  --from-literal=DB_PASSWORD=1234 \
+  -n ch07-practice
+```
+
+확인:
+
+```bash
+kubectl get secret -n ch07-practice
+```
+
+내용:
+
+```bash
+kubectl get secret db-secret \
+  -n ch07-practice \
+  -o yaml
+```
+
+예:
+
+```yaml
+data:
+  DB_PASSWORD: MTIzNA==
+  DB_USERNAME: YXBwdXNlcg==
+```
+
+---
+
+# 22. Secret과 Base64
+
+다음 값:
+
+```text
+MTIzNA==
+```
+
+은 암호화된 값이 아니다.
+
+Base64 Encoding된 값이다.
+
+확인:
+
+```bash
+echo MTIzNA== | base64 -d
+```
+
+결과:
+
+```text
+1234
+```
+
+따라서:
+
+```text
+Base64
+≠ Encryption
+```
+
+이다.
+
+Secret은 민감정보 전용 Kubernetes Resource이지만,
+Base64만으로 정보가 보호되는 것은 아니다.
+
+실무에서는 추가적으로:
+
+```text
+RBAC
+etcd Encryption at Rest
+외부 Secret Manager
+```
+
+등을 함께 고려할 수 있다.
+
+---
+
+# 23. Secret을 Pod 환경변수로 사용
+
+```yaml
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: secret-test
+  namespace: ch07-practice
+
+spec:
+  containers:
+    - name: test
+      image: busybox:1.36
+
+      command:
+        - sh
+        - -c
+        - |
+          echo "DB_USERNAME=$DB_USERNAME"
+          echo "DB_PASSWORD=$DB_PASSWORD"
+          sleep 3600
+
+      env:
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: DB_USERNAME
+
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: DB_PASSWORD
+```
+
+적용:
+
+```bash
+kubectl apply -f secret-pod.yaml
+```
+
+확인:
+
+```bash
+kubectl get pods -n ch07-practice
+```
+
+로그:
+
+```bash
+kubectl logs secret-test -n ch07-practice
+```
+
+결과:
+
+```text
+DB_USERNAME=appuser
+DB_PASSWORD=1234
+```
+
+---
+
+# 24. secretKeyRef 구조
+
+```yaml
+env:
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: db-secret
+        key: DB_PASSWORD
+```
+
+의미:
+
+```text
+Container 환경변수
+DB_PASSWORD
+      ↓
+db-secret Secret
+      ↓
+DB_PASSWORD key
+      ↓
+Container에 값 전달
+```
+
+---
+
+# 25. ConfigMap + Secret + Deployment 통합
+
+7장에서 가장 중요한 구조:
+
+```text
+              ConfigMap
+                  ↓
+Deployment → ReplicaSet → Pod
+                  ↑
+                Secret
+```
+
+Deployment:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: app
+  namespace: ch07-practice
+
+spec:
+  replicas: 3
+
+  selector:
+    matchLabels:
+      app: app
+
+  template:
+    metadata:
+      labels:
+        app: app
+
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+
+          command:
+            - sh
+            - -c
+            - |
+              echo "APP_ENV=$APP_ENV"
+              echo "LOG_LEVEL=$LOG_LEVEL"
+              echo "DB_USERNAME=$DB_USERNAME"
+              echo "DB_PASSWORD=$DB_PASSWORD"
+              sleep 3600
+
+          env:
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_ENV
+
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_LEVEL
+
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: DB_USERNAME
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: DB_PASSWORD
+```
+
+적용:
+
+```bash
+kubectl apply -f app-deployment.yaml
+```
+
+---
+
+# 26. 통합 구조 확인
+
+```bash
+kubectl get deploy,rs,pod -n ch07-practice
+```
+
+실습 결과:
+
+```text
+Deployment
+app
+
+      ↓
+
+ReplicaSet
+app-57d84cc88c
+
+      ↓
+
+Pod 3개
+```
+
+Pod:
+
+```text
+app-57d84cc88c-b8vr5
+app-57d84cc88c-tss5q
+app-57d84cc88c-xcc72
+```
+
+---
+
+# 27. 직접 생성과 자동 생성
+
+이번 통합 실습 기준:
+
+```text
+직접 생성
+
+Namespace
+ConfigMap
+Secret
+Deployment
+```
+
+Deployment 생성 후:
+
+```text
+자동 생성
+
+ReplicaSet
+Pod
+```
+
+중요:
+
+```text
+ConfigMap은 Deployment가 만드는 것이 아니다.
+Secret도 Deployment가 만드는 것이 아니다.
+```
+
+서로 독립적인 Kubernetes Resource이다.
+
+---
+
+# 28. Pod 로그 확인
+
+```bash
+kubectl logs <POD_NAME> -n ch07-practice
+```
+
+실습 결과:
+
+```text
+APP_ENV=production
+LOG_LEVEL=DEBUG
+DB_USERNAME=appuser
+DB_PASSWORD=1234
+```
+
+따라서:
+
+```text
+ConfigMap
+├─ APP_ENV
+└─ LOG_LEVEL
+       ↓
+
+      Pod
+
+       ↑
+Secret
+├─ DB_USERNAME
+└─ DB_PASSWORD
+```
+
+연결이 정상적으로 이루어진 것을 확인했다.
+
+---
+
+# 29. 설정을 Deployment에 직접 넣지 않는 이유
+
+이런 식으로 직접 넣을 수도 있다.
+
+```yaml
+env:
+  - name: DB_PASSWORD
+    value: "1234"
+```
+
+하지만 설정을 별도로 관리하려면:
+
+```yaml
+valueFrom:
+  secretKeyRef:
+```
+
+또는:
+
+```yaml
+valueFrom:
+  configMapKeyRef:
+```
+
+를 사용할 수 있다.
+
+구조:
+
+```text
+Deployment
+= 애플리케이션 실행 구조
+
+ConfigMap
+= 일반 설정
+
+Secret
+= 민감 설정
+```
+
+역할을 분리할 수 있다.
+
+---
+
+# 30. Namespace와 ConfigMap/Secret
+
+Pod가 참조하는 ConfigMap과 Secret은
+일반적으로 Pod와 같은 Namespace에 존재해야 한다.
+
+예:
+
+```text
+Namespace: ch07-practice
+
+├─ Pod
+├─ ConfigMap: app-config
+└─ Secret: db-secret
+```
+
+Namespace가 다르면 단순한 `configMapKeyRef` 또는
+`secretKeyRef`로 직접 참조할 수 없다.
+
+---
+
+# 31. 일부러 ConfigMap 장애 만들기
+
+정상:
+
+```yaml
+configMapKeyRef:
+  name: app-config
+  key: APP_ENV
+```
+
+일부러 오타:
+
+```yaml
+configMapKeyRef:
+  name: app-config
+  key: APP_EN_V
+```
+
+적용:
+
+```bash
+kubectl apply -f app-deployment.yaml
+```
+
+확인:
+
+```bash
+kubectl get deploy,rs,pod -n ch07-practice
+```
+
+새 Pod가 정상 실행되지 않는다.
+
+---
+
+# 32. 장애 원인 확인
+
+Pod 확인:
+
+```bash
+kubectl get pods -n ch07-practice
+```
+
+문제 Pod 상세 확인:
+
+```bash
+kubectl describe pod <POD_NAME> -n ch07-practice
+```
+
+실제 실습에서 Events에 다음 오류가 발생했다.
+
+```text
+Error: couldn't find key APP_EN_V
+in ConfigMap ch07-practice/app-config
+```
+
+뜻:
+
+```text
+Pod:
+app-config에서 APP_EN_V 값을 주세요.
+
+ConfigMap:
+APP_EN_V라는 key가 존재하지 않습니다.
+```
+
+---
+
+# 33. describe 명령어 형식
+
+잘못 사용한 예:
+
+```bash
+kubectl describe pod pod/app-xxxxx -n ch07-practice
+```
+
+`pod`를 두 번 지정했다.
+
+다음 둘 중 하나를 사용한다.
+
+```bash
+kubectl describe pod app-xxxxx -n ch07-practice
+```
+
+또는:
+
+```bash
+kubectl describe pod/app-xxxxx -n ch07-practice
+```
+
+기본 형식:
+
+```text
+kubectl describe <RESOURCE> <NAME>
+```
+
+또는:
+
+```text
+kubectl describe <RESOURCE>/<NAME>
+```
+
+---
+
+# 34. Events 읽기
+
+실습 결과:
+
+```text
+Normal   Scheduled
+Successfully assigned ... to worker1
+```
+
+의미:
+
+```text
+Scheduler가 worker1에 Pod 배치 성공
+```
+
+다음:
+
+```text
+Normal Pulled
+Container image "busybox:1.36" already present
+```
+
+의미:
+
+```text
+Container Image 문제 없음
+```
+
+마지막:
+
+```text
+Warning Failed
+couldn't find key APP_EN_V in ConfigMap
+```
+
+의미:
+
+```text
+ConfigMap 참조 실패
+```
+
+따라서 문제 범위를 좁힐 수 있다.
+
+```text
+Scheduler 문제 X
+Image 문제 X
+ConfigMap 문제 O
+```
+
+---
+
+# 35. CreateContainerConfigError 장애 대응
+
+Pod 상태가:
+
+```text
+CreateContainerConfigError
+```
+
+라면 먼저:
+
+```bash
+kubectl describe pod <POD_NAME> -n ch07-practice
+```
+
+를 확인한다.
+
+점검 대상:
+
+```text
+ConfigMap 이름
+ConfigMap key
+
+Secret 이름
+Secret key
+```
+
+장애 대응 흐름:
+
+```text
+Pod Running 아님
+       ↓
+kubectl get pods
+       ↓
+CreateContainerConfigError
+       ↓
+kubectl describe pod
+       ↓
+Events 확인
+       ↓
+ConfigMap / Secret 확인
+       ↓
+YAML 수정
+       ↓
+kubectl apply
+```
+
+---
+
+# 36. logs와 describe의 차이
+
+Container가 정상 실행된 후
+애플리케이션 내부 오류가 있다면:
+
+```bash
+kubectl logs
+```
+
+가 중요하다.
+
+하지만 Container 자체가 시작하지 못했다면:
+
+```bash
+kubectl describe pod
+```
+
+의 `Events`가 매우 중요하다.
+
+예:
+
+```text
+CreateContainerConfigError
+ImagePullBackOff
+FailedMount
+Scheduling 문제
+```
+
+등은 `describe`를 먼저 확인할 수 있다.
+
+---
+
+# 37. 6장 Rolling Update와 연결
+
+Deployment YAML의 Pod Template을 변경하면:
+
+```text
+Deployment
+     ↓
+새 ReplicaSet 생성
+     ↓
+새 Pod 생성
+```
+
+된다.
+
+이번 장애에서는:
+
+```text
+기존 정상 Pod
+     ↓
+계속 서비스
+
+새 ReplicaSet
+     ↓
+새 Pod 생성 시도
+     ↓
+ConfigMap key 오류
+     ↓
+새 Pod 실행 실패
+```
+
+가 발생했다.
+
+즉 6장의 Deployment/Rolling Update와
+7장의 ConfigMap이 연결된다.
+
+---
+
+# 38. 6장 + 7장 전체 구조
+
+```text
+                        Namespace
+                           │
+              ┌────────────┼─────────────┐
+              │            │             │
+          ConfigMap    Deployment      Secret
+              │            │             │
+              │        ReplicaSet        │
+              │            │             │
+              └──────────→ Pod ←─────────┘
+                           ↑
+                        Service
+```
+
+역할:
+
+```text
+Deployment
+= Pod 배포 및 관리
+
+ReplicaSet
+= 원하는 Pod 수 유지
+
+Pod
+= Container 실행
+
+Service
+= Pod 접근
+
+ConfigMap
+= 일반 설정 제공
+
+Secret
+= 민감정보 제공
+
+Namespace
+= Resource 논리적 구분
+```
+
+---
+
+# 39. 5~7장 연결
+
+## 5장
+
+Kubernetes Cluster 동작 구조
+
+```text
+kubectl
+   ↓
+API Server
+   ↓
+Controller / Scheduler
+   ↓
+kubelet
+   ↓
+Container Runtime
+```
+
+## 6장
+
+애플리케이션 실행 및 접근
+
+```text
+Deployment
+   ↓
+ReplicaSet
+   ↓
+Pod
+   ↑
+Service
+```
+
+## 7장
+
+설정 및 민감정보 제공
+
+```text
+ConfigMap → Pod ← Secret
+```
+
+결국:
+
+```text
+                 ConfigMap
+                     ↓
+kubectl → API Server → Deployment → ReplicaSet → Pod
+                                              ↑
+                                            Secret
+
+Client → Service ───────────────────────────→ Pod
+```
+
+처럼 서로 연결된다.
+
+---
+
+# 40. 7장 핵심 질문과 답
+
+## Q1. Namespace란?
+
+Kubernetes Cluster 안의 Resource를 논리적으로 구분하는 공간이다.
+
+---
+
+## Q2. Namespace가 다르면 Node도 다른가?
+
+아니다.
+
+Namespace는 논리적인 분리이고,
+Node는 실제 Pod가 실행되는 서버이다.
+
+---
+
+## Q3. ConfigMap이란?
+
+애플리케이션의 일반 설정을
+Pod/Image와 분리해서 관리하는 Resource이다.
+
+---
+
+## Q4. Secret이란?
+
+비밀번호, Token, API Key 등
+민감정보를 관리하기 위한 Resource이다.
+
+---
+
+## Q5. ConfigMap과 Secret의 가장 큰 차이는?
+
+```text
+ConfigMap = 일반 설정
+Secret    = 민감정보
+```
+
+이다.
+
+---
+
+## Q6. Secret에 보이는 Base64 값은 암호화인가?
+
+아니다.
+
+Base64 Encoding일 뿐이다.
+
+---
+
+## Q7. ConfigMap을 환경변수로 사용했을 때 값을 바꾸면 기존 Pod의 환경변수도 바로 바뀌는가?
+
+아니다.
+
+이미 실행 중인 Container의 환경변수는 자동으로 변경되지 않는다.
+
+새 값을 사용하려면 Pod 재생성/재시작 등이 필요하다.
+
+---
+
+## Q8. Deployment가 ConfigMap과 Secret을 자동 생성하는가?
+
+아니다.
+
+모두 독립적인 Kubernetes Resource이다.
+
+---
+
+## Q9. Deployment가 자동 생성하는 것은?
+
+```text
+Deployment
+   ↓
+ReplicaSet
+   ↓
+Pod
+```
+
+이다.
+
+---
+
+## Q10. ConfigMap key를 잘못 지정하면 어떤 문제가 발생할 수 있는가?
+
+Pod가 Container 실행 설정을 만들지 못해:
+
+```text
+CreateContainerConfigError
+```
+
+상태가 발생할 수 있다.
+
+---
+
+## Q11. CreateContainerConfigError가 발생하면 무엇을 먼저 확인하는가?
+
+```bash
+kubectl describe pod <POD_NAME>
+```
+
+의 Events를 확인한다.
+
+ConfigMap/Secret 이름과 key 오타 등을 점검한다.
+
+---
+
+## Q12. Pod가 Container 시작도 못 했다면 logs와 describe 중 무엇이 더 중요한가?
+
+대체로:
+
+```text
+kubectl describe pod
+```
+
+의 Events를 먼저 확인한다.
+
+---
+
+## Q13. ConfigMap은 왜 사용하는가?
+
+설정값을 Container Image와 분리해
+환경별 설정을 관리하기 쉽게 하기 위해 사용한다.
+
+---
+
+## Q14. WEB/WAS 프로젝트에서는 어떻게 사용할 수 있는가?
+
+예:
+
+```text
+ConfigMap
+├─ SPRING_PROFILES_ACTIVE
+├─ DB_HOST
+└─ LOG_LEVEL
+
+Secret
+├─ DB_USERNAME
+└─ DB_PASSWORD
+
+           ↓
+
+       WAS Pod
+```
+
+처럼 사용할 수 있다.
+
+---
+
+# 41. 주요 명령어 모음
+
+Namespace:
+
+```bash
+kubectl get ns
+```
+
+```bash
+kubectl create namespace ch07-practice
+```
+
+전체 Namespace Pod:
+
+```bash
+kubectl get pods -A
+```
+
+ConfigMap:
+
+```bash
+kubectl create configmap app-config \
+  --from-literal=APP_ENV=production \
+  --from-literal=LOG_LEVEL=INFO \
+  -n ch07-practice
+```
+
+```bash
+kubectl get cm -n ch07-practice
+```
+
+```bash
+kubectl get configmap app-config \
+  -n ch07-practice \
+  -o yaml
+```
+
+```bash
+kubectl edit configmap app-config -n ch07-practice
+```
+
+Secret:
+
+```bash
+kubectl create secret generic db-secret \
+  --from-literal=DB_USERNAME=appuser \
+  --from-literal=DB_PASSWORD=1234 \
+  -n ch07-practice
+```
+
+```bash
+kubectl get secret -n ch07-practice
+```
+
+```bash
+kubectl get secret db-secret \
+  -n ch07-practice \
+  -o yaml
+```
+
+Base64 Decode:
+
+```bash
+echo MTIzNA== | base64 -d
+```
+
+Deployment:
+
+```bash
+kubectl apply -f app-deployment.yaml
+```
+
+```bash
+kubectl get deploy,rs,pod -n ch07-practice
+```
+
+로그:
+
+```bash
+kubectl logs <POD_NAME> -n ch07-practice
+```
+
+Pod 내부:
+
+```bash
+kubectl exec -it <POD_NAME> \
+  -n ch07-practice \
+  -- sh
+```
+
+장애 확인:
+
+```bash
+kubectl describe pod <POD_NAME> -n ch07-practice
+```
+
+---
+
+# 42. 7장 장애 대응 체크리스트
+
+Pod가 정상 실행되지 않으면:
+
+```text
+1. kubectl get pods
+
+2. Pod STATUS 확인
+
+3. kubectl describe pod
+
+4. Events 확인
+
+5. ConfigMap 존재 확인
+
+6. ConfigMap key 확인
+
+7. Secret 존재 확인
+
+8. Secret key 확인
+
+9. Namespace 확인
+
+10. YAML 수정 후 apply
+```
+
+---
+
+# 43. 7장 최종 핵심
+
+반드시 기억할 구조:
+
+```text
+Namespace
+= Kubernetes Resource의 논리적 구역
+```
+
+```text
+ConfigMap
+= 일반 설정
+```
+
+```text
+Secret
+= 민감정보
+```
+
+그리고:
+
+```text
+              ConfigMap
+                  ↓
+Deployment → ReplicaSet → Pod
+                  ↑
+                Secret
+```
+
+여기에 6장의 Service까지 붙이면:
+
+```text
+              ConfigMap
+                  ↓
+Deployment → ReplicaSet → Pod ← Service
+                  ↑
+                Secret
+```
+
+정확히는:
+
+```text
+Deployment → ReplicaSet → Pod
+= 관리 관계
+
+Service → Pod
+= 트래픽 관계
+
+ConfigMap → Pod
+= 일반 설정 제공
+
+Secret → Pod
+= 민감정보 제공
+```
+
+이다.
+
+---
+
+# 44. 7장 학습 완료 체크
+
+- [x] Namespace 개념 이해
+- [x] Namespace와 Node 차이 이해
+- [x] Namespace 생성 실습
+- [x] `-n`과 `-A` 이해
+- [x] ConfigMap이 필요한 이유 이해
+- [x] ConfigMap 생성 실습
+- [x] ConfigMap 환경변수 주입
+- [x] ConfigMap 변경 실험
+- [x] 기존 Container 환경변수 자동 변경 여부 확인
+- [x] Secret이 필요한 이유 이해
+- [x] Secret 생성 실습
+- [x] Base64가 암호화가 아님을 확인
+- [x] Secret 환경변수 주입
+- [x] ConfigMap + Secret + Deployment 통합
+- [x] Deployment → ReplicaSet → Pod 구조 복습
+- [x] ConfigMap key 오타 장애 생성
+- [x] CreateContainerConfigError 확인
+- [x] `kubectl describe pod` Events 분석
+- [x] ConfigMap 장애 원인 추적
+- [x] 6장과 7장 연결 이해
+
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/65bc8e93-3444-49b8-886a-a3171a3e0b60" />
 
 </details>
 
