@@ -769,6 +769,1251 @@ volumes:
 **38. 5장에서 가장 중요한 실습 경험은 무엇이었나요?**
 - **정답:** kubeadm으로 Control Plane 1대와 Worker 2대의 3 Node Kubernetes Cluster를 직접 구축하고 모두 Ready 상태까지 만든 것입니다.
 
+
+
+
+# Kubernetes 5장 - Kubernetes 구조와 클러스터 구성
+
+## 1. Kubernetes란?
+
+Kubernetes는 여러 서버(Node)에서 여러 Container를 자동으로 배치하고 운영하기 위한 Container Orchestration 플랫폼이다.
+
+Docker만 사용하는 경우 서버에서 Container를 직접 실행하고 관리해야 하지만, Kubernetes를 사용하면 다음과 같은 작업을 자동화할 수 있다.
+
+- Container 배치
+- Container 장애 복구
+- Pod 개수 유지
+- 여러 Node에 워크로드 분산
+- 애플리케이션 배포 및 확장
+- Service Discovery
+- Load Balancing
+
+기본적인 구조는 다음과 같다.
+
+```text
+Kubernetes Cluster
+
+├─ Control Plane
+│
+└─ Worker Node
+```
+
+Control Plane은 Kubernetes 전체를 관리하고,
+Worker Node는 실제 애플리케이션 Pod를 실행한다.
+
+---
+
+# 2. Kubernetes 전체 구조
+
+```text
+                         Kubernetes Cluster
+
+┌──────────────────────────────────────────────────────┐
+│                                                      │
+│                    Control Plane                     │
+│                                                      │
+│ kubectl ───────→ API Server ←──── Controller Manager │
+│                     ↑  ↓      ←──── Scheduler        │
+│                     │ etcd                           │
+│                     │                                │
+│─────────────────────┼────────────────────────────────│
+│                     │                                │
+│                  Worker Nodes                        │
+│                                                      │
+│     Worker1                        Worker2            │
+│     ├─ kubelet                     ├─ kubelet         │
+│     ├─ kube-proxy                  ├─ kube-proxy      │
+│     ├─ containerd                  ├─ containerd      │
+│     └─ Pod                         └─ Pod             │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+# 3. Kubernetes 주요 구성요소
+
+## 3.1 kubectl
+
+`kubectl`은 사용자가 Kubernetes에 명령을 전달하기 위한 CLI 도구이다.
+
+예:
+
+```bash
+kubectl get pods
+kubectl get nodes
+kubectl apply -f deployment.yaml
+```
+
+`kubectl`이 Worker Node에 직접 명령하는 것이 아니다.
+
+```text
+사용자
+ ↓
+kubectl
+ ↓
+API Server
+```
+
+즉 `kubectl`은 Kubernetes API Server에 요청을 보낸다.
+
+---
+
+## 3.2 API Server
+
+API Server는 Kubernetes의 중앙 통신 창구이다.
+
+```text
+kubectl
+Controller
+Scheduler
+kubelet
+Ingress Controller
+
+      ↕
+  API Server
+```
+
+예를 들어:
+
+```bash
+kubectl apply -f deployment.yaml
+```
+
+을 실행하면:
+
+```text
+kubectl
+ ↓
+API Server
+ ↓
+Kubernetes에 원하는 상태 등록
+```
+
+과정이 진행된다.
+
+현재 실습 환경의 API Server:
+
+```text
+https://192.168.111.137:6443
+```
+
+즉:
+
+```text
+kubectl
+ ↓
+192.168.111.137:6443
+ ↓
+API Server
+```
+
+구조이다.
+
+---
+
+## 3.3 etcd
+
+`etcd`는 Kubernetes Cluster의 상태를 저장하는 Key-Value 데이터 저장소이다.
+
+예:
+
+```text
+Node 정보
+Pod 정보
+Deployment 정보
+Service 정보
+ConfigMap
+Secret
+Ingress
+```
+
+단순히 사용자가 실행한 명령을 기록하는 곳이라기보다는,
+
+```text
+"Kubernetes Cluster가 어떤 상태여야 하는가?"
+```
+
+와 관련된 상태 정보를 저장한다.
+
+구조:
+
+```text
+Kubernetes Component
+       ↓
+   API Server
+       ↓
+      etcd
+```
+
+Controller나 Scheduler가 일반적으로 etcd에 직접 접근하는 것이 아니라 API Server를 통해 상태를 확인한다.
+
+---
+
+## 3.4 Controller Manager
+
+Controller는 Kubernetes의 **현재 상태와 원하는 상태를 비교하고 두 상태를 맞추는 역할**을 한다.
+
+예를 들어:
+
+```yaml
+replicas: 3
+```
+
+이라고 설정했다고 가정한다.
+
+원하는 상태:
+
+```text
+Pod = 3개
+```
+
+현재 상태:
+
+```text
+Pod = 2개
+```
+
+Controller는:
+
+```text
+원하는 상태 = 3
+현재 상태 = 2
+
+        ↓
+
+Pod 1개 부족
+
+        ↓
+
+Pod 추가 생성
+```
+
+을 통해 원하는 상태로 맞춘다.
+
+핵심:
+
+```text
+원하는 상태
+     ↓
+현재 상태와 비교
+     ↓
+다르면 맞춘다
+```
+
+이것이 Kubernetes의 핵심 개념인 **Desired State**이다.
+
+---
+
+## 3.5 Scheduler
+
+Scheduler는 새롭게 생성될 Pod가 어느 Worker Node에서 실행될지 결정한다.
+
+```text
+새 Pod 생성 필요
+
+      ↓
+
+Scheduler
+
+      ↓
+
+worker1?
+worker2?
+
+      ↓
+
+적절한 Node 선택
+```
+
+중요:
+
+```text
+Scheduler
+= Pod를 직접 실행하지 않음
+
+Scheduler
+= Pod가 실행될 Node를 결정
+```
+
+---
+
+## 3.6 kubelet
+
+`kubelet`은 각 Node에서 실행되는 Kubernetes Agent이다.
+
+Scheduler가 Pod를 특정 Node에 배치하면,
+해당 Node의 kubelet이 실제 Pod 실행을 관리한다.
+
+```text
+Scheduler
+ ↓
+worker2 선택
+ ↓
+worker2의 kubelet
+ ↓
+Container Runtime
+ ↓
+Pod 실행
+```
+
+중요한 차이:
+
+```text
+kubectl
+= 사용자 명령을 API Server에 전달
+
+kubelet
+= Worker Node에서 실제 Pod 실행을 관리
+```
+
+---
+
+## 3.7 Container Runtime
+
+현재 실습 환경에서는 `containerd`를 사용한다.
+
+```text
+kubelet
+ ↓
+containerd
+ ↓
+Container
+ ↓
+Pod 실행
+```
+
+실제 Node 정보에서도 확인할 수 있다.
+
+```text
+CONTAINER-RUNTIME
+containerd://2.2.x
+```
+
+---
+
+## 3.8 kube-proxy
+
+`kube-proxy`는 Kubernetes Service의 네트워크 트래픽 처리에 관여한다.
+
+현재 Cluster에서는 각 Node에 하나씩 실행되고 있다.
+
+```text
+control-plane
+└─ kube-proxy
+
+worker1
+└─ kube-proxy
+
+worker2
+└─ kube-proxy
+```
+
+이후 13장에서 배우는 `DaemonSet`과 연결되는 구조이다.
+
+---
+
+## 3.9 CoreDNS
+
+CoreDNS는 Kubernetes 내부 DNS 역할을 한다.
+
+예를 들어 WEB Pod가 WAS Service를 다음 이름으로 호출할 수 있다.
+
+```text
+http://was-service
+```
+
+구조:
+
+```text
+WEB Pod
+ ↓
+was-service
+ ↓
+WAS Pod
+```
+
+Pod IP를 직접 사용하는 대신 Service 이름을 통해 접근할 수 있도록 DNS 기능을 제공한다.
+
+---
+
+# 4. kubectl apply 이후 Pod가 실행되기까지
+
+사용자가 다음 명령을 실행한다고 가정한다.
+
+```bash
+kubectl apply -f deployment.yaml
+```
+
+전체 흐름:
+
+```text
+사용자
+ ↓
+kubectl
+ ↓
+API Server
+ ↓
+원하는 상태 저장
+ ↓
+Controller가 상태 확인
+ ↓
+Pod 생성 필요 확인
+ ↓
+Scheduler가 실행할 Node 결정
+ ↓
+해당 Worker Node의 kubelet
+ ↓
+Container Runtime(containerd)
+ ↓
+Pod 실행
+```
+
+한 줄로 요약하면:
+
+```text
+kubectl
+ ↓
+API Server
+ ↓
+Controller
+ ↓
+Scheduler
+ ↓
+kubelet
+ ↓
+Container Runtime
+ ↓
+Pod
+```
+
+API Server 뒤에는:
+
+```text
+API Server
+ ↓
+etcd
+```
+
+가 있어 Kubernetes Cluster 상태를 저장한다.
+
+---
+
+# 5. 실습 환경
+
+현재 Kubernetes Cluster:
+
+```text
+Control Plane
+IP: 192.168.111.137
+
+Worker1
+IP: 192.168.111.138
+
+Worker2
+IP: 192.168.111.134
+```
+
+Kubernetes Version:
+
+```text
+v1.37.1
+```
+
+Container Runtime:
+
+```text
+containerd
+```
+
+Pod Network:
+
+```text
+10.244.0.0/16
+```
+
+---
+
+# 6. Node 상태 확인
+
+명령어:
+
+```bash
+kubectl get nodes -o wide
+```
+
+실습 결과:
+
+```text
+NAME            STATUS   ROLES           INTERNAL-IP
+control-plane   Ready    control-plane   192.168.111.137
+worker1         Ready    <none>          192.168.111.138
+worker2         Ready    <none>          192.168.111.134
+```
+
+확인 포인트:
+
+```text
+STATUS = Ready
+```
+
+이면 Kubernetes가 해당 Node를 정상적으로 사용할 수 있다는 의미이다.
+
+또한 출력에서 Container Runtime을 확인할 수 있다.
+
+```text
+containerd://2.2.x
+```
+
+---
+
+# 7. Control Plane 구성요소 확인
+
+명령어:
+
+```bash
+kubectl get pods -n kube-system -o wide
+```
+
+주요 구성요소:
+
+```text
+etcd-control-plane
+
+kube-apiserver-control-plane
+
+kube-controller-manager-control-plane
+
+kube-scheduler-control-plane
+```
+
+즉 실제 Control Plane에는 다음 구성요소가 실행되고 있다.
+
+```text
+Control Plane
+
+├─ API Server
+├─ etcd
+├─ Controller Manager
+└─ Scheduler
+```
+
+---
+
+# 8. CoreDNS 확인
+
+명령어:
+
+```bash
+kubectl get pods -n kube-system -o wide
+```
+
+실습 환경에서는 다음과 같은 CoreDNS Pod를 확인할 수 있었다.
+
+```text
+coredns-xxxxx
+coredns-xxxxx
+```
+
+역할:
+
+```text
+CoreDNS
+= Kubernetes 내부 DNS
+```
+
+예:
+
+```text
+WEB Pod
+ ↓
+was-service
+ ↓
+CoreDNS가 Service 이름 해석
+ ↓
+WAS Service
+ ↓
+WAS Pod
+```
+
+---
+
+# 9. kube-proxy 확인
+
+명령어:
+
+```bash
+kubectl get pods -n kube-system -o wide
+```
+
+현재 환경에서는:
+
+```text
+kube-proxy → control-plane
+kube-proxy → worker1
+kube-proxy → worker2
+```
+
+처럼 Node마다 하나씩 실행되고 있었다.
+
+```text
+control-plane
+└─ kube-proxy
+
+worker1
+└─ kube-proxy
+
+worker2
+└─ kube-proxy
+```
+
+---
+
+# 10. Kubernetes Cluster 정보 확인
+
+명령어:
+
+```bash
+kubectl cluster-info
+```
+
+실습 결과:
+
+```text
+Kubernetes control plane is running at
+https://192.168.111.137:6443
+```
+
+따라서:
+
+```text
+kubectl
+ ↓
+192.168.111.137:6443
+ ↓
+API Server
+```
+
+구조로 요청이 전달된다.
+
+---
+
+# 11. API Server Readiness 확인
+
+명령어:
+
+```bash
+kubectl get --raw='/readyz'
+```
+
+정상 결과:
+
+```text
+ok
+```
+
+의미:
+
+```text
+API Server가 요청을 받을 준비가 되어 있음
+```
+
+잘못된 예:
+
+```bash
+kubectl get --raw= '/readyz'
+```
+
+`=` 뒤에 공백이 들어가면 명령어가 정상적으로 처리되지 않는다.
+
+정상:
+
+```bash
+kubectl get --raw='/readyz'
+```
+
+---
+
+# 12. kubelet 상태 확인
+
+각 Node에서 다음 명령어를 실행한다.
+
+```bash
+systemctl is-active kubelet
+```
+
+정상:
+
+```text
+active
+```
+
+자세한 확인:
+
+```bash
+systemctl status kubelet --no-pager
+```
+
+Worker1 접속:
+
+```bash
+ssh ubuntu@192.168.111.138
+```
+
+확인:
+
+```bash
+systemctl is-active kubelet
+```
+
+Worker2 접속:
+
+```bash
+ssh ubuntu@192.168.111.134
+```
+
+확인:
+
+```bash
+systemctl is-active kubelet
+```
+
+세 Node 모두:
+
+```text
+active
+```
+
+상태임을 확인했다.
+
+---
+
+# 13. Pod가 어느 Node에서 실행되는지 확인
+
+명령어:
+
+```bash
+kubectl get pods -A -o wide
+```
+
+확인 항목:
+
+```text
+NAME
+IP
+NODE
+STATUS
+```
+
+예:
+
+```text
+Pod A
+IP: 10.244.1.x
+NODE: worker1
+
+Pod B
+IP: 10.244.2.x
+NODE: worker2
+```
+
+이 결과를 통해:
+
+```text
+Pod 생성 필요
+ ↓
+Scheduler
+ ↓
+Node 선택
+ ↓
+해당 Node의 kubelet
+ ↓
+Pod 실행
+```
+
+구조를 확인할 수 있다.
+
+---
+
+# 14. kubeadm 환경의 Static Pod
+
+현재 Cluster는 `kubeadm`으로 구축했다.
+
+kubeadm 환경에서는 다음 Control Plane 구성요소들이 일반적으로 Static Pod 형태로 실행된다.
+
+```text
+kube-apiserver
+etcd
+kube-controller-manager
+kube-scheduler
+```
+
+Manifest 확인:
+
+```bash
+sudo ls -l /etc/kubernetes/manifests/
+```
+
+예:
+
+```text
+etcd.yaml
+kube-apiserver.yaml
+kube-controller-manager.yaml
+kube-scheduler.yaml
+```
+
+구조:
+
+```text
+/etc/kubernetes/manifests/
+          ↓
+Control Plane의 kubelet
+          ↓
+Static Pod 실행
+```
+
+즉 Control Plane 구성요소 역시 실제 실행되는 프로세스이며,
+kubeadm 환경에서는 kubelet이 Static Pod 형태로 실행시킨다.
+
+---
+
+# 15. Kubernetes 구조 최종 정리
+
+```text
+Kubernetes Cluster
+
+├─ Control Plane
+│
+│  ├─ API Server
+│  │   └─ Kubernetes 중앙 통신 창구
+│  │
+│  ├─ etcd
+│  │   └─ Cluster 상태 저장
+│  │
+│  ├─ Scheduler
+│  │   └─ Pod가 실행될 Node 결정
+│  │
+│  └─ Controller Manager
+│      └─ 원하는 상태와 현재 상태를 맞춤
+│
+├─ Worker1
+│  ├─ kubelet
+│  ├─ kube-proxy
+│  ├─ containerd
+│  └─ Pod
+│
+└─ Worker2
+   ├─ kubelet
+   ├─ kube-proxy
+   ├─ containerd
+   └─ Pod
+```
+
+---
+
+# 16. 구성요소 한 줄 정리
+
+```text
+kubectl
+= Kubernetes에 명령을 보내는 CLI
+
+API Server
+= Kubernetes의 중앙 통신 창구
+
+etcd
+= Kubernetes Cluster 상태 저장소
+
+Controller
+= 현재 상태를 원하는 상태에 맞춤
+
+Scheduler
+= Pod가 실행될 Node를 선택
+
+kubelet
+= 해당 Node에서 Pod 실행을 관리
+
+containerd
+= 실제 Container 실행
+
+kube-proxy
+= Service 네트워크 트래픽 처리
+
+CoreDNS
+= Kubernetes 내부 DNS
+```
+
+---
+
+# 17. 가장 중요한 실행 흐름
+
+```text
+사용자
+ ↓
+kubectl
+ ↓
+API Server
+ ↓
+Controller
+ ↓
+Scheduler
+ ↓
+Worker Node
+ ↓
+kubelet
+ ↓
+containerd
+ ↓
+Pod
+```
+
+상태 저장:
+
+```text
+API Server
+ ↓
+etcd
+```
+
+---
+
+# 18. 중요한 구분
+
+## kubectl과 kubelet
+
+```text
+kubectl
+= 사용자가 Kubernetes에 명령을 보내는 프로그램
+
+kubelet
+= 각 Node에서 실제 Pod 실행을 관리하는 프로그램
+```
+
+## Scheduler와 kubelet
+
+```text
+Scheduler
+= 어느 Node?
+
+kubelet
+= 그 Node에서 실제 실행
+```
+
+## Controller와 Scheduler
+
+```text
+Controller
+= Pod가 필요한가?
+
+Scheduler
+= 그 Pod를 어느 Node에 둘까?
+```
+
+## API Server와 etcd
+
+```text
+API Server
+= Kubernetes 중앙 창구
+
+etcd
+= Kubernetes 상태 저장소
+```
+
+---
+
+# 19. 5장 핵심 질문과 답
+
+## Q1. kubectl은 Worker Node에 직접 명령하는가?
+
+아니다.
+
+```text
+kubectl
+ ↓
+API Server
+```
+
+로 요청한다.
+
+---
+
+## Q2. etcd는 무엇인가?
+
+Kubernetes Cluster의 상태 정보를 저장하는 데이터 저장소이다.
+
+---
+
+## Q3. 원하는 Pod가 3개인데 현재 2개라면?
+
+Controller가 원하는 상태와 현재 상태의 차이를 확인하고 다시 원하는 상태로 맞춘다.
+
+---
+
+## Q4. Pod가 어느 Node에서 실행될지 누가 결정하는가?
+
+```text
+Scheduler
+```
+
+---
+
+## Q5. Worker Node에서 실제 Pod 실행을 관리하는 것은?
+
+```text
+kubelet
+```
+
+---
+
+## Q6. Container를 실제 실행하는 Runtime은?
+
+현재 환경에서는:
+
+```text
+containerd
+```
+
+를 사용한다.
+
+---
+
+## Q7. API Server가 중요한 이유는?
+
+Kubernetes 구성요소들이 Cluster 상태를 조회하고 변경하기 위해 사용하는 중앙 통신 창구이기 때문이다.
+
+---
+
+## Q8. Controller가 etcd를 직접 읽는가?
+
+일반적으로 직접 접근하지 않는다.
+
+```text
+Controller
+ ↓
+API Server
+ ↓
+etcd
+```
+
+구조로 이해한다.
+
+---
+
+## Q9. Scheduler가 Pod를 직접 실행하는가?
+
+아니다.
+
+```text
+Scheduler
+= Node 결정
+
+kubelet
+= 해당 Node에서 Pod 실행 관리
+```
+
+---
+
+# 20. 실습 명령어 모음
+
+## Node 확인
+
+```bash
+kubectl get nodes
+```
+
+```bash
+kubectl get nodes -o wide
+```
+
+---
+
+## Kubernetes System Pod 확인
+
+```bash
+kubectl get pods -n kube-system
+```
+
+```bash
+kubectl get pods -n kube-system -o wide
+```
+
+---
+
+## 모든 Namespace의 Pod 확인
+
+```bash
+kubectl get pods -A
+```
+
+```bash
+kubectl get pods -A -o wide
+```
+
+---
+
+## Cluster 정보 확인
+
+```bash
+kubectl cluster-info
+```
+
+---
+
+## API Server Ready 확인
+
+```bash
+kubectl get --raw='/readyz'
+```
+
+---
+
+## kubelet 상태 확인
+
+```bash
+systemctl is-active kubelet
+```
+
+```bash
+systemctl status kubelet --no-pager
+```
+
+---
+
+## Static Pod Manifest 확인
+
+```bash
+sudo ls -l /etc/kubernetes/manifests/
+```
+
+---
+
+# 21. 5장 구조 요약 이미지
+
+이미지 파일을 Repository에 다음과 같이 저장한다.
+
+```text
+docs/
+└─ images/
+   └─ kubernetes-ch05-summary.png
+```
+
+README에 다음 내용을 작성하면 이미지가 표시된다.
+
+```markdown
+![Kubernetes 5장 구조 요약](./docs/images/kubernetes-ch05-summary.png)
+```
+
+---
+
+# 22. 5장 최종 요약
+
+Kubernetes Cluster는 크게 `Control Plane`과 `Worker Node`로 구성된다.
+
+```text
+Control Plane
+= Kubernetes 전체 관리
+
+Worker Node
+= 실제 Pod 실행
+```
+
+사용자가 `kubectl`을 사용해 명령하면:
+
+```text
+kubectl
+ ↓
+API Server
+```
+
+로 요청이 전달된다.
+
+Kubernetes는 원하는 상태를 저장하고 Controller가 현재 상태와 비교한다.
+
+Pod가 필요하면:
+
+```text
+Controller
+ ↓
+Scheduler
+ ↓
+Node 선택
+ ↓
+kubelet
+ ↓
+containerd
+ ↓
+Pod
+```
+
+순서로 실제 Pod가 실행된다.
+
+핵심적으로 기억해야 할 구조는 다음과 같다.
+
+```text
+kubectl
+ ↓
+API Server
+ ↓
+Controller
+ ↓
+Scheduler
+ ↓
+kubelet
+ ↓
+Container Runtime
+ ↓
+Pod
+```
+
+그리고 Kubernetes Cluster 상태는:
+
+```text
+API Server
+ ↓
+etcd
+```
+
+에 저장된다.
+
+---
+
+# 23. 5장 학습 완료 체크
+
+- [x] Kubernetes Cluster 구조 이해
+- [x] Control Plane과 Worker Node 차이 이해
+- [x] API Server 역할 이해
+- [x] etcd 역할 이해
+- [x] Controller 역할 이해
+- [x] Scheduler 역할 이해
+- [x] kubelet 역할 이해
+- [x] containerd 확인
+- [x] kube-proxy 확인
+- [x] CoreDNS 확인
+- [x] Node 상태 확인
+- [x] API Server 주소 확인
+- [x] API Server Ready 확인
+- [x] kubelet 상태 확인
+- [x] Static Pod 구조 확인
+- [x] kubectl → API Server → Scheduler → kubelet → Pod 흐름 이해
+
+
+
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/e358f63e-a727-44ce-8364-ce4e369abe83" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 </details>
 <details>
 <summary><b>6장 쿠버네티스 시작하기</b></summary>
