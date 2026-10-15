@@ -2534,6 +2534,1442 @@ Deployment → ReplicaSet → Pod → Container
 
 Service → Pod
 
+
+# Kubernetes 6장 - Pod, ReplicaSet, Deployment, Service
+
+## 1. 6장 전체 핵심 구조
+
+6장에서 가장 중요한 구조는 두 가지이다.
+
+### 애플리케이션 관리 흐름
+
+```text
+Deployment
+   ↓
+ReplicaSet
+   ↓
+Pod
+   ↓
+Container
+```
+
+### 트래픽 흐름
+
+```text
+Service
+   ↓
+Pod
+```
+
+두 구조는 Pod에서 만난다.
+
+```text
+                 Service
+                    ↓
+          ┌─────────┼─────────┐
+          ↓         ↓         ↓
+        Pod1      Pod2      Pod3
+          ↑         ↑         ↑
+          └──── ReplicaSet ───┘
+                    ↑
+                Deployment
+```
+
+---
+
+# 2. Pod
+
+Pod는 Kubernetes에서 Container를 실행하는 기본 단위이다.
+
+Docker에서는:
+
+```text
+Image
+ ↓
+Container
+```
+
+Kubernetes에서는:
+
+```text
+Pod
+ ↓
+Container
+```
+
+일반적으로 하나의 Pod에 하나의 주요 애플리케이션 Container를 실행한다.
+
+```text
+Pod
+└─ nginx Container
+```
+
+필요하면 여러 Container를 하나의 Pod에 넣을 수도 있다.
+
+```text
+Pod
+├─ Application Container
+└─ Sidecar Container
+```
+
+같은 Pod의 Container들은 다음과 같은 특징이 있다.
+
+- 같은 Node에서 실행
+- 네트워크 공간 공유
+- localhost 통신 가능
+- Volume 공유 가능
+
+---
+
+# 3. ReplicaSet
+
+ReplicaSet의 핵심 역할은:
+
+```text
+원하는 Pod 개수를 유지
+```
+
+하는 것이다.
+
+예:
+
+```yaml
+replicas: 3
+```
+
+원하는 상태:
+
+```text
+Pod = 3개
+```
+
+현재 Pod 하나가 죽어서:
+
+```text
+Pod = 2개
+```
+
+가 되면 ReplicaSet이 다시 Pod를 생성한다.
+
+```text
+원하는 상태 = 3
+현재 상태 = 2
+
+      ↓
+
+Pod 하나 추가 생성
+
+      ↓
+
+현재 상태 = 3
+```
+
+이것은 Kubernetes의 Desired State 개념과 연결된다.
+
+---
+
+# 4. Label과 Selector
+
+ReplicaSet은 자신이 관리해야 하는 Pod를 Label과 Selector를 통해 찾는다.
+
+Pod:
+
+```text
+label:
+app=web
+```
+
+ReplicaSet:
+
+```text
+selector:
+app=web
+```
+
+구조:
+
+```text
+ReplicaSet
+selector: app=web
+       ↓
+ ┌─────┼─────┐
+ ↓     ↓     ↓
+Pod   Pod   Pod
+app=  app=  app=
+web   web   web
+```
+
+---
+
+# 5. Deployment
+
+실제 애플리케이션 운영에서는 ReplicaSet을 직접 사용하는 것보다 Deployment를 주로 사용한다.
+
+구조:
+
+```text
+Deployment
+   ↓
+ReplicaSet
+   ↓
+Pod
+```
+
+Deployment의 역할:
+
+```text
+애플리케이션 배포
+Pod 개수 관리
+Rolling Update
+Rollback
+배포 버전 관리
+```
+
+정확히는 Deployment가 ReplicaSet을 관리하고,
+ReplicaSet이 Pod 개수를 관리한다.
+
+---
+
+# 6. 직접 만드는 것과 자동 생성되는 것
+
+일반적인 Deployment 사용 기준:
+
+```text
+직접 생성
+
+Deployment
+```
+
+그러면 Kubernetes가:
+
+```text
+Deployment
+   ↓
+ReplicaSet 자동 생성
+   ↓
+Pod 자동 생성
+```
+
+한다.
+
+Service는 Deployment가 자동으로 만드는 것이 아니다.
+
+```text
+Deployment
+Service
+```
+
+는 서로 독립적인 Kubernetes Resource이다.
+
+---
+
+# 7. Deployment 생성 실습
+
+실습 Namespace:
+
+```bash
+kubectl create namespace ch06-practice
+```
+
+Deployment 파일:
+
+```bash
+vi web-deployment.yaml
+```
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: web
+  namespace: ch06-practice
+
+spec:
+  replicas: 3
+
+  selector:
+    matchLabels:
+      app: web
+
+  template:
+    metadata:
+      labels:
+        app: web
+
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.26
+          ports:
+            - containerPort: 80
+```
+
+적용:
+
+```bash
+kubectl apply -f web-deployment.yaml
+```
+
+확인:
+
+```bash
+kubectl get deployment -n ch06-practice
+```
+
+```bash
+kubectl get replicaset -n ch06-practice
+```
+
+```bash
+kubectl get pods -n ch06-practice -o wide
+```
+
+한 번에 확인:
+
+```bash
+kubectl get deploy,rs,pod -n ch06-practice -o wide
+```
+
+구조:
+
+```text
+Deployment web
+      ↓
+ReplicaSet
+      ↓
+Pod 3개
+```
+
+---
+
+# 8. Pod 자동 복구 실습
+
+현재 Deployment:
+
+```text
+replicas = 3
+```
+
+Pod 확인:
+
+```bash
+kubectl get pods -n ch06-practice
+```
+
+Pod 하나 삭제:
+
+```bash
+kubectl delete pod <POD_NAME> -n ch06-practice
+```
+
+변화 확인:
+
+```bash
+kubectl get pods -n ch06-practice -w
+```
+
+Pod 하나가 삭제되면:
+
+```text
+원하는 상태 = 3
+현재 상태 = 2
+```
+
+ReplicaSet이 새로운 Pod를 생성해서 다시 3개를 유지한다.
+
+```text
+Pod A
+Pod B
+Pod C
+
+↓ Pod B 삭제
+
+Pod A
+Pod C
+
+↓ ReplicaSet
+
+Pod A
+Pod C
+Pod D
+```
+
+---
+
+# 9. Pod 삭제와 replicas 변경의 차이
+
+Pod 하나를 직접 삭제:
+
+```text
+원하는 상태 = 3
+현재 상태 = 2
+
+→ 다시 3개로 복구
+```
+
+반면 replicas 자체를 변경:
+
+```text
+replicas: 3
+↓
+replicas: 2
+```
+
+하면 원하는 상태 자체가 2개로 바뀐다.
+
+```text
+Pod 삭제
+= 현재 상태가 원하는 상태와 달라짐
+
+replicas 변경
+= 원하는 상태 자체를 변경
+```
+
+---
+
+# 10. Scale 실습
+
+Pod 3개를 5개로 증가:
+
+```bash
+kubectl scale deployment web \
+  --replicas=5 \
+  -n ch06-practice
+```
+
+확인:
+
+```bash
+kubectl get deploy,rs,pod -n ch06-practice -o wide
+```
+
+정상:
+
+```text
+Deployment = 5/5
+ReplicaSet DESIRED = 5
+Pod = 5개
+```
+
+다시 3개:
+
+```bash
+kubectl scale deployment web \
+  --replicas=3 \
+  -n ch06-practice
+```
+
+---
+
+# 11. 5장과 Deployment 생성 흐름 연결
+
+사용자가:
+
+```bash
+kubectl apply -f web-deployment.yaml
+```
+
+을 실행하면 내부적으로 다음 흐름이 진행된다.
+
+```text
+kubectl
+ ↓
+API Server
+ ↓
+Deployment 등록
+ ↓
+Deployment Controller
+ ↓
+ReplicaSet
+ ↓
+ReplicaSet Controller
+ ↓
+Pod 필요
+ ↓
+Scheduler
+ ↓
+Node 결정
+ ↓
+해당 Node kubelet
+ ↓
+containerd
+ ↓
+Pod 실행
+```
+
+즉 5장에서 배운 Kubernetes 내부 구조와
+6장의 Deployment가 연결된다.
+
+---
+
+# 12. Rolling Update
+
+기존:
+
+```text
+nginx:1.26
+```
+
+새 버전:
+
+```text
+nginx:1.27
+```
+
+이미지 변경:
+
+```bash
+kubectl set image deployment/web \
+  nginx=nginx:1.27 \
+  -n ch06-practice
+```
+
+배포 상태 확인:
+
+```bash
+kubectl rollout status deployment/web -n ch06-practice
+```
+
+ReplicaSet 확인:
+
+```bash
+kubectl get rs -n ch06-practice
+```
+
+Rolling Update를 하면 새로운 ReplicaSet이 생성된다.
+
+```text
+Deployment
+   │
+   ├─ Old ReplicaSet
+   │      ↓
+   │   nginx:1.26
+   │
+   └─ New ReplicaSet
+          ↓
+       nginx:1.27
+```
+
+새로운 Pod를 점진적으로 늘리고 기존 Pod를 줄인다.
+
+```text
+기존 Pod 일부 유지
+ ↓
+새 Pod 생성
+ ↓
+새 Pod 정상 확인
+ ↓
+기존 Pod 제거
+ ↓
+반복
+```
+
+이 방식으로 서비스 중단을 줄인다.
+
+---
+
+# 13. Rollout 명령
+
+배포 상태:
+
+```bash
+kubectl rollout status deployment/web -n ch06-practice
+```
+
+배포 이력:
+
+```bash
+kubectl rollout history deployment/web -n ch06-practice
+```
+
+이전 버전으로 롤백:
+
+```bash
+kubectl rollout undo deployment/web -n ch06-practice
+```
+
+중요:
+
+```text
+rollout status
+= 배포 상태 확인
+
+rollout history
+= 배포 이력 확인
+
+rollout undo
+= 이전 버전으로 복구
+```
+
+명령어 전체를 외우기보다 역할과 사용 상황을 이해한다.
+
+---
+
+# 14. Service가 필요한 이유
+
+Pod는 삭제되고 재생성될 수 있다.
+
+예:
+
+```text
+Pod1 = 10.244.1.20
+```
+
+Pod가 삭제된 후:
+
+```text
+새 Pod = 10.244.2.30
+```
+
+처럼 IP가 바뀔 수 있다.
+
+따라서 애플리케이션이 Pod IP에 직접 의존하면 안 된다.
+
+그래서 Service를 사용한다.
+
+```text
+        Service
+           ↓
+   ┌───────┼───────┐
+   ↓       ↓       ↓
+ Pod1    Pod2    Pod3
+```
+
+Service는 Pod 앞에서 안정적인 접근점을 제공한다.
+
+---
+
+# 15. Service가 Pod를 찾는 방법
+
+Service 역시 Label과 Selector를 사용한다.
+
+Pod:
+
+```text
+label:
+app=web
+```
+
+Service:
+
+```text
+selector:
+app=web
+```
+
+따라서:
+
+```text
+Service
+selector app=web
+       ↓
+app=web Label을 가진 Pod
+```
+
+로 연결된다.
+
+---
+
+# 16. ClusterIP Service 생성
+
+파일:
+
+```bash
+vi web-service.yaml
+```
+
+```yaml
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: web-service
+  namespace: ch06-practice
+
+spec:
+  selector:
+    app: web
+
+  ports:
+    - port: 80
+      targetPort: 80
+```
+
+적용:
+
+```bash
+kubectl apply -f web-service.yaml
+```
+
+확인:
+
+```bash
+kubectl get svc -n ch06-practice
+```
+
+`type`을 지정하지 않으면 기본값은:
+
+```text
+ClusterIP
+```
+
+이다.
+
+---
+
+# 17. port와 targetPort
+
+```yaml
+ports:
+  - port: 80
+    targetPort: 80
+```
+
+의미:
+
+```text
+Service :80
+     ↓
+Pod :80
+```
+
+즉:
+
+```text
+port
+= Service가 받는 포트
+
+targetPort
+= 실제 Pod Container가 받는 포트
+```
+
+이다.
+
+---
+
+# 18. EndpointSlice
+
+Service가 실제로 어떤 Pod와 연결되는지 확인:
+
+```bash
+kubectl get endpointslice -n ch06-practice
+```
+
+구조:
+
+```text
+Service
+   ↓
+EndpointSlice
+   ↓
+Pod IP + Port
+```
+
+예:
+
+```text
+web-service
+     ↓
+EndpointSlice
+     ↓
+10.244.1.x:80
+10.244.2.x:80
+10.244.2.x:80
+```
+
+즉 EndpointSlice에는 Service 뒤에 실제로 연결 가능한 Endpoint 정보가 들어있다.
+
+---
+
+# 19. ClusterIP 통신 실습
+
+임시 curl Pod 생성:
+
+```bash
+kubectl run curl-test \
+  -n ch06-practice \
+  --image=curlimages/curl \
+  -it --rm -- sh
+```
+
+Pod 내부:
+
+```bash
+curl web-service
+```
+
+정상이라면 nginx 기본 HTML이 출력된다.
+
+구조:
+
+```text
+curl-test Pod
+      ↓
+web-service
+      ↓
+nginx Pod
+```
+
+즉 ClusterIP는 Kubernetes Cluster 내부 통신에 사용할 수 있다.
+
+---
+
+# 20. WEB Pod → WAS Service 구조
+
+실제 3-Tier 구조에서도 같은 원리를 사용한다.
+
+```text
+WEB Pod
+   ↓
+WAS Service
+   ↓
+WAS Pod
+```
+
+WEB Pod가 WAS Pod IP에 직접 연결하지 않는다.
+
+```text
+WAS Pod IP
+= 재생성되면 바뀔 수 있음
+```
+
+따라서:
+
+```text
+http://was-service
+```
+
+처럼 Service 이름을 사용한다.
+
+CoreDNS가 내부에서 Service 이름을 해석할 수 있도록 지원한다.
+
+---
+
+# 21. Service 종류
+
+## ClusterIP
+
+```text
+Kubernetes Cluster 내부 통신
+```
+
+구조:
+
+```text
+Pod
+ ↓
+ClusterIP Service
+ ↓
+Pod
+```
+
+기본 Service 타입이다.
+
+---
+
+## NodePort
+
+클러스터 외부에서:
+
+```text
+Node IP + NodePort
+```
+
+로 접근할 수 있다.
+
+구조:
+
+```text
+외부
+ ↓
+Node IP : NodePort
+ ↓
+Service
+ ↓
+Pod
+```
+
+---
+
+## LoadBalancer
+
+Cloud 환경에서 외부 Load Balancer와 연동한다.
+
+구조:
+
+```text
+인터넷
+ ↓
+Cloud Load Balancer
+ ↓
+Service
+ ↓
+Pod
+```
+
+---
+
+# 22. Service 타입이 나뉜 이유
+
+각 Service 타입은 접근 범위와 목적이 다르다.
+
+```text
+ClusterIP
+= Cluster 내부에서 접근하고 싶다.
+
+NodePort
+= Cluster 밖에서도 Node IP와 Port로 접근하고 싶다.
+
+LoadBalancer
+= Cloud Load Balancer를 이용해 외부 서비스를 안정적으로 공개하고 싶다.
+```
+
+개념적으로:
+
+```text
+LoadBalancer
+    ↓
+NodePort
+    ↓
+ClusterIP
+    ↓
+Pod
+```
+
+형태로 이해할 수 있다.
+
+---
+
+# 23. NodePort Service 생성
+
+파일:
+
+```bash
+vi web-nodeport.yaml
+```
+
+```yaml
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: web-nodeport
+  namespace: ch06-practice
+
+spec:
+  type: NodePort
+
+  selector:
+    app: web
+
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+```
+
+적용:
+
+```bash
+kubectl apply -f web-nodeport.yaml
+```
+
+확인:
+
+```bash
+kubectl get svc -n ch06-practice
+```
+
+예:
+
+```text
+web-service    ClusterIP
+web-nodeport   NodePort    80:30080/TCP
+```
+
+---
+
+# 24. NodePort 외부 접근
+
+Worker1:
+
+```text
+192.168.111.138
+```
+
+Worker2:
+
+```text
+192.168.111.134
+```
+
+Chrome:
+
+```text
+http://192.168.111.138:30080
+```
+
+또는:
+
+```text
+http://192.168.111.134:30080
+```
+
+curl 테스트:
+
+```bash
+curl http://192.168.111.138:30080
+```
+
+핵심:
+
+```text
+NodePort
+= Node IP + NodePort
+```
+
+Pod IP가 아니다.
+
+---
+
+# 25. NodePort와 Pod 위치
+
+예를 들어 실제 nginx Pod가 Worker2에 있어도:
+
+```text
+Chrome
+ ↓
+Worker1 IP:30080
+ ↓
+NodePort Service
+ ↓
+Worker2의 nginx Pod
+```
+
+처럼 전달될 수 있다.
+
+즉 NodePort의 Node IP와 실제 요청을 처리하는 Pod의 Node가 반드시 같을 필요는 없다.
+
+---
+
+# 26. Service와 Deployment는 별개이다
+
+중요한 구조:
+
+```text
+Deployment
+   ↓
+ReplicaSet
+   ↓
+Pod
+```
+
+와:
+
+```text
+Service
+   ↓
+Pod
+```
+
+는 서로 다른 관계이다.
+
+```text
+Deployment 계열
+= Pod 관리
+
+Service
+= Pod 접근
+```
+
+Service가 Pod를 생성하는 것이 아니고,
+Deployment가 Service를 생성하는 것도 아니다.
+
+---
+
+# 27. 6장 전체 구조
+
+```text
+                     외부 사용자
+                          ↓
+                 NodePort / LoadBalancer
+                          ↓
+                       Service
+                          ↓
+                ┌─────────┼─────────┐
+                ↓         ↓         ↓
+              Pod1      Pod2      Pod3
+                ↑         ↑         ↑
+                └──── ReplicaSet ───┘
+                          ↑
+                      Deployment
+```
+
+---
+
+# 28. 관리 흐름과 트래픽 흐름
+
+## 관리 흐름
+
+```text
+Deployment
+ ↓
+ReplicaSet
+ ↓
+Pod
+ ↓
+Container
+```
+
+## 트래픽 흐름
+
+```text
+Service
+ ↓
+Pod
+```
+
+이 둘을 구분하는 것이 중요하다.
+
+---
+
+# 29. 장애 대응 기본 흐름
+
+Service 접속이 되지 않는다면:
+
+```text
+Service 존재?
+ ↓
+Selector 확인
+ ↓
+EndpointSlice 확인
+ ↓
+Pod Running?
+ ↓
+Container가 실제 Port에서 Listen?
+ ↓
+애플리케이션 로그 확인
+```
+
+관련 명령:
+
+```bash
+kubectl get svc -n ch06-practice
+```
+
+```bash
+kubectl describe svc web-service -n ch06-practice
+```
+
+```bash
+kubectl get endpointslice -n ch06-practice
+```
+
+```bash
+kubectl get pods -n ch06-practice -o wide
+```
+
+```bash
+kubectl logs <POD_NAME> -n ch06-practice
+```
+
+---
+
+# 30. 6장 핵심 질문과 답
+
+## Q1. Pod란?
+
+Container를 실행하는 Kubernetes의 기본 단위이다.
+
+---
+
+## Q2. ReplicaSet 역할은?
+
+원하는 Pod 개수를 유지한다.
+
+---
+
+## Q3. Deployment 역할은?
+
+애플리케이션의 배포, Rolling Update, Rollback 등을 관리한다.
+
+---
+
+## Q4. Deployment와 ReplicaSet 관계는?
+
+```text
+Deployment
+ ↓
+ReplicaSet
+ ↓
+Pod
+```
+
+Deployment가 ReplicaSet을 이용해 Pod 배포를 관리한다.
+
+---
+
+## Q5. Pod가 하나 죽으면?
+
+ReplicaSet이 원하는 Pod 개수를 유지하기 위해 새로운 Pod를 생성한다.
+
+---
+
+## Q6. Service가 필요한 이유는?
+
+Pod는 재생성되면서 IP가 바뀔 수 있기 때문에 안정적인 접근점이 필요하다.
+
+---
+
+## Q7. Service는 Pod를 어떻게 찾는가?
+
+```text
+Service Selector
+ ↓
+Pod Label
+```
+
+을 이용한다.
+
+---
+
+## Q8. EndpointSlice란?
+
+Service 뒤에 실제로 연결 가능한 Pod IP와 Port 정보를 관리한다.
+
+---
+
+## Q9. ClusterIP는?
+
+Cluster 내부 접근용 Service이다.
+
+---
+
+## Q10. NodePort는?
+
+```text
+Node IP + NodePort
+```
+
+를 통해 외부에서 접근할 수 있는 Service이다.
+
+---
+
+## Q11. LoadBalancer는?
+
+Cloud Load Balancer와 연동해 외부에 Service를 노출한다.
+
+---
+
+## Q12. Deployment가 Service를 자동으로 만드는가?
+
+아니다.
+
+둘은 독립적인 Kubernetes Resource이다.
+
+---
+
+## Q13. Service → Pod와 Deployment → Pod의 차이는?
+
+```text
+Deployment → ReplicaSet → Pod
+= 관리 관계
+
+Service → Pod
+= 트래픽 전달 관계
+```
+
+이다.
+
+---
+
+## Q14. WEB Pod가 WAS Pod를 호출할 때 WAS Pod IP를 직접 사용해야 하는가?
+
+아니다.
+
+```text
+WEB Pod
+ ↓
+was-service
+ ↓
+WAS Pod
+```
+
+구조를 사용하는 것이 좋다.
+
+Pod IP는 변경될 수 있기 때문이다.
+
+---
+
+## Q15. Rolling Update란?
+
+기존 Pod를 한 번에 모두 종료하지 않고 새 버전 Pod를 점진적으로 생성하면서 기존 Pod를 교체하는 방식이다.
+
+---
+
+# 31. 실습 명령어 모음
+
+## Namespace
+
+```bash
+kubectl create namespace ch06-practice
+```
+
+## Deployment 적용
+
+```bash
+kubectl apply -f web-deployment.yaml
+```
+
+## Deployment / ReplicaSet / Pod 확인
+
+```bash
+kubectl get deploy,rs,pod -n ch06-practice -o wide
+```
+
+## Pod 삭제
+
+```bash
+kubectl delete pod <POD_NAME> -n ch06-practice
+```
+
+## Watch
+
+```bash
+kubectl get pods -n ch06-practice -w
+```
+
+## Scale
+
+```bash
+kubectl scale deployment web --replicas=5 -n ch06-practice
+```
+
+## 이미지 변경
+
+```bash
+kubectl set image deployment/web nginx=nginx:1.27 -n ch06-practice
+```
+
+## Rollout 상태
+
+```bash
+kubectl rollout status deployment/web -n ch06-practice
+```
+
+## Rollout 이력
+
+```bash
+kubectl rollout history deployment/web -n ch06-practice
+```
+
+## Rollback
+
+```bash
+kubectl rollout undo deployment/web -n ch06-practice
+```
+
+## Service 적용
+
+```bash
+kubectl apply -f web-service.yaml
+```
+
+## Service 확인
+
+```bash
+kubectl get svc -n ch06-practice
+```
+
+## EndpointSlice
+
+```bash
+kubectl get endpointslice -n ch06-practice
+```
+
+## NodePort
+
+```bash
+kubectl apply -f web-nodeport.yaml
+```
+
+## 외부 테스트
+
+```bash
+curl http://192.168.111.138:30080
+```
+
+---
+
+# 32. 6장 최종 핵심
+
+6장에서 가장 중요한 것은 다음 두 줄이다.
+
+```text
+Deployment → ReplicaSet → Pod
+```
+
+```text
+Service → Pod
+```
+
+첫 번째는:
+
+```text
+애플리케이션 관리
+```
+
+두 번째는:
+
+```text
+트래픽 전달
+```
+
+을 담당한다.
+
+그리고 Service를 사용하는 가장 중요한 이유는:
+
+```text
+Pod가 재생성되면 IP가 바뀔 수 있기 때문에
+Service라는 안정적인 접근점을 사용한다.
+```
+
+는 것이다.
+
+---
+
+# 33. 6장 학습 완료 체크
+
+- [x] Pod 역할 이해
+- [x] ReplicaSet 역할 이해
+- [x] Deployment 역할 이해
+- [x] Deployment → ReplicaSet → Pod 구조 이해
+- [x] Label / Selector 이해
+- [x] Pod 삭제 후 자동 복구 확인
+- [x] Desired State 확인
+- [x] Scale 실습
+- [x] Rolling Update 실습
+- [x] Rollback 실습
+- [x] Service가 필요한 이유 이해
+- [x] ClusterIP 생성
+- [x] EndpointSlice 확인
+- [x] ClusterIP 내부 통신 확인
+- [x] NodePort 생성
+- [x] Node IP + NodePort 외부 접근 이해
+- [x] ClusterIP / NodePort / LoadBalancer 차이 이해
+- [x] Service → Pod와 Deployment → Pod 관계 구분
+
+
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/2ecad6d0-f27f-47ba-a953-29dffdabf6ac" />
+
+
+
+
+
+
+
+
 </details>
 
 <details>
