@@ -6696,92 +6696,1846 @@ Secret → Pod
 <details>
 <summary><b> 8장 인그레스(Ingress)</b></summary>
 
-## Ingress를 사용하는 이유
-1. 외부에서 Pod에 접근하려면 주로 NodePort나 LB를 배웠다.
-2. 실제 서비스는 여러 서비스가 있다
-3. NodePort를 각각 만들면 각 서비스 별로 포트를 입력하며 접속해야한다.
-4. 이런것을 처리하는게 Ingress이다.
+# Kubernetes 8장 - Ingress
 
-## Ingress를 앞에 둔다.
-1. Ingress가 요청을 보고 어느 서비스로 갈지 나눠주는 거다.
-2. Ingress는 외부 HTTP/HTTPS 요청을 보고 어떤 Service로 보낼지 결정하는 입구이다.
-3. Ingress는 Pod를 직접 찾아가지 않는다.
+## 1. 8장 전체 핵심 구조
 
-## LoadBalancer를 서비스마다 만들면?
-1. 비용적으로 안좋다.
+Ingress는 여러 Service를 HTTP/HTTPS의 Host와 Path를 기준으로 라우팅하기 위한 Kubernetes Resource이다.
 
-## Ingress는 무엇을 보고 구분하나요?
-1. URL 경로(Path) : example.com/usr > user-service
-2. Path 기반 Routing이라고 생각하면 된다.
-3. 도메인(Host)
-4. 경로 또는 도메인을 보고 어떤 Service로 보낼지 결정한다.
+중요:
 
-## Ingress는 규칙이고 Ingress Controller는 규칙을 실제로 실행하는 프로그램이다.
-## Ingress를 쓰는 가장 큰이유
-1. 여러 Service를 하나의 외부 진입점에서 URL이나 도메인 기준으로 나눠 연결하기 위해
+```text
+Ingress
+= 라우팅 규칙
 
-## 인그레스의 구조
-1. 외부사용자 → Ingress Controller → Ingress 규칙 → Service → Pod
-2. Ingress와 Ingress Controller는 서로 다른 것이다.
+Ingress Controller
+= 그 규칙을 읽고 실제 HTTP/HTTPS 요청을 처리하는 프로그램
+```
 
-## Ingress는 규칙이다.
-1. /game이면 game-service로 보내라
-2. ingress 자체가 직접 패킷을 받아서 움직이는 프로그램이 아니다.
+전체 구조:
 
-## Ingress Controller는 실제로 움직이는 프로그램이다.
-1. Ingress Controller는 Kubernetes 내부에서 계속 실행되고 있다.
-2. Ingress 를 만들면 Controller가 그걸 읽는다.
+```text
+사용자
+   ↓
+Ingress Controller
+   ↓
+Ingress Rule
+   ↓
+Service
+   ↓
+EndpointSlice
+   ↓
+Pod
+```
 
-## Service는 왜 또 필요할까?
-1. Ingress가 Pod IP를 기억하면 귀찮아서 Service를 둔다.
-2. Ingress는 Service만 알면된다.
+---
 
- ## 실제 요청 흐름
- 1. 사용자 요청
- 2. Ingress Controller가 요청 수신
- 3. Ingress 규칙 확인 : /game → game-service
- 4. game-service로 전달
- 5. Service가 Pod 선택
- 6. Spring Pod에서 요청 처리
+# 2. Ingress가 필요한 이유
 
-## Deployment까지 포함하면?
-1. 사용자 → Ingress Controller → Ingress → Service → Pod → Controller : 트래픽 흐름 : Pod로 트래픽을 전달
-2. Deployment → ReplicaSet → Pod : 관리 흐름 : Pod를 생성하고 유지
-3. 이 둘은 완전히 다른 역할이다.
+NodePort만 사용하면 애플리케이션마다 다른 포트를 사용할 수 있다.
 
-## 직접 만드는 것 / 자동으로 생기는 것
-1. 직접 만드는 것 : Deployment, Service, Ingress
-2. 자동으로 생기는 것 : ReplicaSet, Pod
+예:
 
-## Ingress Controller는 어디에 있나요
-1. Kubernetes 안에서는 결국 Pod로 실행한다.
-2. Kubernetes 위에서 실행되는 하나의 애플리케이션이다.
+```text
+APP1 → NodePort 30080
+APP2 → NodePort 30081
+APP3 → NodePort 30082
+```
 
-## Ingress YAML 기본 구조
-``` text
+접속:
+
+```text
+http://node-ip:30080
+http://node-ip:30081
+http://node-ip:30082
+```
+
+서비스가 많아질수록 포트 관리가 복잡해진다.
+
+Ingress를 사용하면:
+
+```text
+http://ch08.local/app1
+http://ch08.local/app2
+```
+
+처럼 하나의 진입점에서 Host/Path에 따라 여러 Service로 분기할 수 있다.
+
+```text
+ch08.local
+   │
+   ├─ /app1 → app1-service
+   │
+   └─ /app2 → app2-service
+```
+
+---
+
+# 3. Ingress와 Ingress Controller
+
+## Ingress
+
+Ingress는 Kubernetes Resource이다.
+
+예:
+
+```text
+/app1 → app1-service
+/app2 → app2-service
+```
+
+라는 규칙을 정의한다.
+
+Ingress 자체가 트래픽을 처리하는 프로그램은 아니다.
+
+---
+
+## Ingress Controller
+
+Ingress Controller는 Ingress Resource를 감시하고 실제 요청을 처리한다.
+
+우리 실습에서는:
+
+```text
+F5 NGINX Ingress Controller
+```
+
+를 사용했다.
+
+구조:
+
+```text
+Ingress Resource
+= 규칙
+
+        ↓ 읽음
+
+NGINX Ingress Controller
+= 실제 처리
+```
+
+---
+
+# 4. 설정 흐름과 트래픽 흐름
+
+Ingress에서는 두 흐름을 구분해야 한다.
+
+## 설정 흐름
+
+```text
+kubectl apply
+      ↓
+API Server
+      ↓
+Ingress Resource 저장
+      ↓
+Ingress Controller가 API Server 감시
+      ↓
+Ingress 규칙 발견
+      ↓
+NGINX 설정 반영
+```
+
+Ingress Controller가 로컬 YAML 파일을 직접 읽는 것이 아니다.
+
+`kubectl`이 API Server에 Resource를 등록하고,
+Controller가 API Server를 통해 Resource를 감시한다.
+
+---
+
+## 실제 트래픽 흐름
+
+```text
+사용자
+ ↓
+Ingress Controller
+ ↓
+Ingress 규칙에 따라 판단
+ ↓
+Service
+ ↓
+EndpointSlice
+ ↓
+Pod
+```
+
+즉:
+
+```text
+Control Plane 흐름
+= 설정을 등록하고 감시하는 과정
+
+Data Plane 흐름
+= 실제 사용자 요청이 이동하는 과정
+```
+
+이다.
+
+---
+
+# 5. Ingress Controller 설치와 애플리케이션 배포 구분
+
+이번 실습에서는 공부를 위해 Ingress Controller 설치도 직접 했다.
+
+## 클러스터 구축 단계
+
+```text
+NGINX Ingress Controller Deployment
+        ↓
+Controller Pod
+
+Controller용 NodePort Service
+        ↓
+외부 HTTP/HTTPS 진입점
+```
+
+설치 과정에서 사용:
+
+```bash
+kubectl apply -f deployments/common/ns-and-sa.yaml
+kubectl apply -f deployments/rbac/rbac.yaml
+kubectl apply -f deployments/common/nginx-config.yaml
+kubectl apply -f deployments/common/ingress-class.yaml
+kubectl apply -f deployments/deployment/nginx-ingress.yaml
+kubectl create -f deployments/service/nodeport.yaml
+```
+
+---
+
+## 애플리케이션 배포 단계
+
+```text
+Namespace
+↓
+Deployment
+↓
+Service
+↓
+Ingress
+```
+
+실무에서 기존 Kubernetes Cluster를 사용하는 경우
+Ingress Controller는 이미 설치되어 있을 수 있다.
+
+그러면 애플리케이션 담당자는 주로:
+
+```text
+Deployment
+Service
+Ingress
+```
+
+를 구성한다.
+
+---
+
+# 6. 8장 Namespace
+
+실습용 Namespace:
+
+```bash
+kubectl create namespace ch08-practice
+```
+
+YAML로 표현하면:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+
+metadata:
+  name: ch08-practice
+```
+
+Namespace는 Resource를 논리적으로 구분한다.
+
+```text
+Kubernetes Cluster
+
+└─ ch08-practice
+    ├─ Deployment app1
+    ├─ Deployment app2
+    ├─ Service app1-service
+    ├─ Service app2-service
+    └─ Ingress practice-ingress
+```
+
+Namespace는 Node를 물리적으로 분리하는 기능이 아니다.
+
+---
+
+# 7. APP1 Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: app1
+  namespace: ch08-practice
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: app1
+
+  template:
+    metadata:
+      labels:
+        app: app1
+
+    spec:
+      containers:
+        - name: app1
+          image: hashicorp/http-echo:1.0
+
+          args:
+            - "-text=Hello from APP1"
+
+          ports:
+            - containerPort: 5678
+```
+
+의미:
+
+```text
+ch08-practice Namespace에
+app1 Deployment 생성
+
+Pod 2개 유지
+
+Pod Label
+app=app1
+
+Container Image
+hashicorp/http-echo:1.0
+
+HTTP 요청 시
+Hello from APP1 응답
+
+Application Port
+5678
+```
+
+구조:
+
+```text
+Deployment app1
+       ↓
+ReplicaSet
+       ↓
+ ┌─────┴─────┐
+Pod          Pod
+```
+
+---
+
+# 8. APP1 Service
+
+```yaml
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: app1-service
+  namespace: ch08-practice
+
+spec:
+  selector:
+    app: app1
+
+  ports:
+    - port: 80
+      targetPort: 5678
+```
+
+뜻:
+
+```text
+app=app1 Label을 가진 Pod를 찾아라.
+
+Service의 80번 포트로 받은 요청을
+Pod의 5678번 포트로 전달해라.
+```
+
+구조:
+
+```text
+app1-service :80
+       ↓
+targetPort :5678
+       ↓
+app1 Pod :5678
+```
+
+---
+
+# 9. Service type
+
+Service YAML에:
+
+```yaml
+type:
+```
+
+을 작성하지 않았으므로 기본 타입인:
+
+```text
+ClusterIP
+```
+
+가 사용된다.
+
+실습 결과:
+
+```text
+app1-service → ClusterIP
+app2-service → ClusterIP
+```
+
+Ingress가 외부 노출을 담당하기 때문에
+Backend Service는 ClusterIP로 사용할 수 있다.
+
+```text
+외부
+ ↓
+Ingress Controller
+ ↓
+ClusterIP Service
+ ↓
+Pod
+```
+
+---
+
+# 10. Service의 핵심 포트
+
+```yaml
+ports:
+  - port: 80
+    targetPort: 5678
+```
+
+## port
+
+```text
+Service가 받는 포트
+```
+
+현재:
+
+```text
+Service :80
+```
+
+## targetPort
+
+```text
+실제 Pod Application이 요청을 받는 포트
+```
+
+현재:
+
+```text
+Pod :5678
+```
+
+따라서:
+
+```text
+Service :80
+   ↓
+Pod :5678
+```
+
+이다.
+
+---
+
+# 11. EndpointSlice
+
+Service가 실제 어떤 Pod와 연결됐는지 확인:
+
+```bash
+kubectl get endpointslice -n ch08-practice
+```
+
+실습 결과:
+
+```text
+app1-service
+→ 10.244.2.55:5678
+→ 10.244.1.69:5678
+
+app2-service
+→ 10.244.1.70:5678
+→ 10.244.2.56:5678
+```
+
+구조:
+
+```text
+Service
+   ↓
+EndpointSlice
+   ↓
+Pod IP + Port
+```
+
+---
+
+# 12. Deployment selector와 Service selector
+
+Deployment:
+
+```yaml
+selector:
+  matchLabels:
+    app: app1
+```
+
+뜻:
+
+```text
+어떤 Pod를 Deployment가 관리할 것인가?
+```
+
+Service:
+
+```yaml
+selector:
+  app: app1
+```
+
+뜻:
+
+```text
+어떤 Pod로 트래픽을 보낼 것인가?
+```
+
+따라서:
+
+```text
+Deployment
+selector app=app1
+      ↓ 관리
+
+     Pod
+label app=app1
+
+      ↑ 트래픽
+Service
+selector app=app1
+```
+
+이다.
+
+---
+
+# 13. Ingress 생성
+
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 
 metadata:
-  name: game-ingress
+  name: practice-ingress
+  namespace: ch08-practice
 
 spec:
+  ingressClassName: nginx
+
   rules:
-    - host: example.com 
+    - host: ch08.local
+
       http:
         paths:
-          - path: /game
+          - path: /app1
             pathType: Prefix
+
             backend:
               service:
-                name: game-service
+                name: app1-service
+                port:
+                  number: 80
+
+          - path: /app2
+            pathType: Prefix
+
+            backend:
+              service:
+                name: app2-service
                 port:
                   number: 80
 ```
 
-## Ingress Controller 설치
-1. 설치 파일 : Control Plane 서버에서 실행 : git clone https://github.com/nginx/kubernetes-ingress.git --branch v5.6.3
-2. cd kubernetes-ingress
+---
+
+# 14. Ingress apiVersion
+
+```yaml
+apiVersion: networking.k8s.io/v1
+```
+
+Ingress는 Kubernetes Networking API Group을 사용한다.
+
+지금까지 비교:
+
+```text
+Namespace
+→ v1
+
+Service
+→ v1
+
+Deployment
+→ apps/v1
+
+Ingress
+→ networking.k8s.io/v1
+```
+
+---
+
+# 15. ingressClassName
+
+```yaml
+ingressClassName: nginx
+```
+
+뜻:
+
+```text
+이 Ingress는
+nginx IngressClass에 연결된
+Ingress Controller가 처리한다.
+```
+
+구조:
+
+```text
+Ingress
+   ↓
+ingressClassName: nginx
+   ↓
+IngressClass nginx
+   ↓
+NGINX Ingress Controller
+```
+
+---
+
+# 16. Host
+
+```yaml
+host: ch08.local
+```
+
+HTTP 요청의 Host를 기준으로 라우팅한다.
+
+테스트할 때:
+
+```bash
+curl -H "Host: ch08.local" ...
+```
+
+을 사용한 이유이다.
+
+실제 DNS 환경에서:
+
+```text
+ch08.local
+↓
+Ingress Controller IP
+```
+
+가 정상 설정되어 있다면 브라우저가 Host Header를 자동으로 보낸다.
+
+---
+
+# 17. Path
+
+```yaml
+path: /app1
+pathType: Prefix
+```
+
+`Prefix`이므로 `/app1` 경로를 기준으로 매칭한다.
+
+예:
+
+```text
+/app1
+/app1/
+/app1/test
+/app1/users
+```
+
+등이 해당 경로 규칙에 매칭될 수 있다.
+
+---
+
+# 18. Backend
+
+```yaml
+backend:
+  service:
+    name: app1-service
+    port:
+      number: 80
+```
+
+뜻:
+
+```text
+/app1 요청
+↓
+app1-service의 80번 포트
+```
+
+이다.
+
+Ingress가 Pod IP를 직접 지정하지 않는다.
+
+```text
+Ingress
+↓
+Service
+↓
+Pod
+```
+
+구조를 사용한다.
+
+---
+
+# 19. APP1 전체 트래픽 흐름
+
+```text
+ch08.local/app1
+       ↓
+NGINX Ingress Controller
+       ↓
+Ingress 규칙
+       ↓
+app1-service :80
+       ↓
+EndpointSlice
+       ↓
+app1 Pod :5678
+       ↓
+Hello from APP1
+```
+
+---
+
+# 20. APP2 전체 트래픽 흐름
+
+```text
+ch08.local/app2
+       ↓
+NGINX Ingress Controller
+       ↓
+Ingress 규칙
+       ↓
+app2-service :80
+       ↓
+EndpointSlice
+       ↓
+app2 Pod :5678
+       ↓
+Hello from APP2
+```
+
+---
+
+# 21. Ingress Host 충돌 장애
+
+처음에는:
+
+```yaml
+host: practice.local
+```
+
+을 사용했다.
+
+하지만 기존 Ingress가 이미 같은 Host를 사용하고 있어서:
+
+```text
+Warning Rejected
+All hosts are taken by other resources
+```
+
+오류가 발생했다.
+
+확인:
+
+```bash
+kubectl describe ingress practice-ingress -n ch08-practice
+```
+
+Host를:
+
+```yaml
+host: ch08.local
+```
+
+로 변경했다.
+
+다시 적용:
+
+```bash
+kubectl apply -f ch08-ingress.yaml
+```
+
+정상 Event:
+
+```text
+Normal AddedOrUpdated
+Configuration for ch08-practice/practice-ingress was added or updated
+```
+
+---
+
+# 22. Ingress Controller용 NodePort Service
+
+Ingress Controller를 설치할 때 다음 파일을 적용했다.
+
+```bash
+kubectl create -f deployments/service/nodeport.yaml
+```
+
+이 파일은 우리가 직접 작성한 애플리케이션 Service YAML이 아니라
+NGINX Ingress Controller에서 제공한 설치용 YAML이다.
+
+이 Service의 역할:
+
+```text
+외부 사용자
+   ↓
+Controller용 NodePort Service
+   ↓
+Ingress Controller Pod
+```
+
+이다.
+
+---
+
+# 23. Controller Service 확인
+
+```bash
+kubectl get svc nginx-ingress -n nginx-ingress
+```
+
+실습 결과:
+
+```text
+80:31779/TCP
+443:31075/TCP
+```
+
+해석:
+
+```text
+HTTP
+
+Service Port 80
+↓
+NodePort 31779
+```
+
+```text
+HTTPS
+
+Service Port 443
+↓
+NodePort 31075
+```
+
+31779와 31075는 Service YAML에 nodePort를 직접 지정하지 않았기 때문에
+Kubernetes가 자동으로 할당했다.
+
+---
+
+# 24. Namespace 이름과 Service 이름 구분
+
+명령:
+
+```bash
+kubectl get svc nginx-ingress -n nginx-ingress
+```
+
+해석:
+
+```text
+svc nginx-ingress
+= Service 이름
+
+-n nginx-ingress
+= Namespace 이름
+```
+
+현재 구조:
+
+```text
+Namespace: nginx-ingress
+        ↓
+Service: nginx-ingress
+```
+
+이므로 이름이 같아서 처음에는 헷갈릴 수 있다.
+
+---
+
+# 25. HTTP 테스트
+
+Controller의 HTTP NodePort:
+
+```text
+31779
+```
+
+테스트:
+
+```bash
+curl -H "Host: ch08.local" \
+  http://192.168.111.138:31779/app1
+```
+
+결과:
+
+```text
+Hello from APP1
+```
+
+APP2:
+
+```bash
+curl -H "Host: ch08.local" \
+  http://192.168.111.138:31779/app2
+```
+
+결과:
+
+```text
+Hello from APP2
+```
+
+---
+
+# 26. HTTP 전체 경로
+
+```text
+curl
+ ↓
+Worker IP :31779
+ ↓
+nginx-ingress NodePort Service :80
+ ↓
+NGINX Ingress Controller
+ ↓
+Ingress Rule
+ ↓
+app1-service :80
+ ↓
+app1 Pod :5678
+```
+
+중요:
+
+```text
+31779
+= app1-service NodePort가 아니다.
+
+Ingress Controller 앞의
+NodePort Service 포트이다.
+```
+
+---
+
+# 27. Annotation
+
+Ingress의 기본 spec은:
+
+```text
+어디로 요청을 보낼 것인가?
+```
+
+를 정의한다.
+
+Annotation은:
+
+```text
+Ingress Controller가 요청을
+어떻게 처리할 것인가?
+```
+
+를 추가로 정의한다.
+
+한 줄 정리:
+
+```text
+spec
+= 어디로?
+
+annotation
+= 어떻게?
+```
+
+---
+
+# 28. Annotation 실습
+
+F5 NGINX Ingress Controller를 사용하기 때문에:
+
+```text
+nginx.org/...
+```
+
+형식을 사용한다.
+
+```yaml
+metadata:
+  name: practice-ingress
+  namespace: ch08-practice
+
+  annotations:
+    nginx.org/proxy-connect-timeout: "10s"
+    nginx.org/proxy-read-timeout: "30s"
+```
+
+적용:
+
+```bash
+kubectl apply -f ch08-ingress.yaml
+```
+
+확인:
+
+```bash
+kubectl describe ingress practice-ingress -n ch08-practice
+```
+
+---
+
+# 29. proxy-connect-timeout
+
+```yaml
+nginx.org/proxy-connect-timeout: "10s"
+```
+
+Backend Service/Pod와 연결을 맺기 위해 기다릴 시간을 설정한다.
+
+---
+
+# 30. proxy-read-timeout
+
+```yaml
+nginx.org/proxy-read-timeout: "30s"
+```
+
+Backend의 응답 데이터를 기다리는 시간을 설정한다.
+
+---
+
+# 31. SSL/TLS
+
+기존 HTTP:
+
+```text
+http://ch08.local
+```
+
+HTTPS:
+
+```text
+https://ch08.local
+```
+
+HTTPS를 사용하려면:
+
+```text
+인증서
++
+개인키
+```
+
+가 필요하다.
+
+구조:
+
+```text
+Certificate
++
+Private Key
+    ↓
+TLS Secret
+    ↓
+Ingress
+    ↓
+Ingress Controller
+```
+
+---
+
+# 32. Self-Signed 인증서 생성
+
+실습용 인증서:
+
+```bash
+openssl req \
+  -x509 \
+  -nodes \
+  -days 365 \
+  -newkey rsa:2048 \
+  -keyout ch08.key \
+  -out ch08.crt \
+  -subj "/CN=ch08.local" \
+  -addext "subjectAltName=DNS:ch08.local"
+```
+
+생성 확인:
+
+```bash
+ls -l ch08.key ch08.crt
+```
+
+---
+
+# 33. TLS Secret
+
+```bash
+kubectl create secret tls ch08-tls \
+  --cert=ch08.crt \
+  --key=ch08.key \
+  -n ch08-practice
+```
+
+확인:
+
+```bash
+kubectl get secret ch08-tls -n ch08-practice
+```
+
+실습 결과:
+
+```text
+NAME       TYPE                DATA
+ch08-tls   kubernetes.io/tls   2
+```
+
+`DATA 2`는 일반적으로:
+
+```text
+tls.crt
+tls.key
+```
+
+두 항목이 있다는 의미이다.
+
+---
+
+# 34. Ingress와 TLS Secret 연결
+
+Ingress에 추가:
+
+```yaml
+spec:
+  ingressClassName: nginx
+
+  tls:
+    - hosts:
+        - ch08.local
+
+      secretName: ch08-tls
+```
+
+의미:
+
+```text
+ch08.local HTTPS 요청에
+ch08-tls Secret의 인증서와 개인키를 사용한다.
+```
+
+---
+
+# 35. TLS 전체 Ingress
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: practice-ingress
+  namespace: ch08-practice
+
+  annotations:
+    nginx.org/proxy-connect-timeout: "10s"
+    nginx.org/proxy-read-timeout: "30s"
+
+spec:
+  ingressClassName: nginx
+
+  tls:
+    - hosts:
+        - ch08.local
+      secretName: ch08-tls
+
+  rules:
+    - host: ch08.local
+
+      http:
+        paths:
+
+          - path: /app1
+            pathType: Prefix
+
+            backend:
+              service:
+                name: app1-service
+                port:
+                  number: 80
+
+          - path: /app2
+            pathType: Prefix
+
+            backend:
+              service:
+                name: app2-service
+                port:
+                  number: 80
+```
+
+---
+
+# 36. HTTPS 테스트
+
+Controller HTTPS NodePort:
+
+```text
+31075
+```
+
+APP1:
+
+```bash
+curl -k \
+  --resolve ch08.local:31075:192.168.111.138 \
+  https://ch08.local:31075/app1
+```
+
+결과:
+
+```text
+Hello from APP1
+```
+
+APP2:
+
+```bash
+curl -k \
+  --resolve ch08.local:31075:192.168.111.138 \
+  https://ch08.local:31075/app2
+```
+
+결과:
+
+```text
+Hello from APP2
+```
+
+---
+
+# 37. `-k`
+
+Self-Signed 인증서는 공인 CA가 서명한 인증서가 아니므로
+curl이 신뢰하지 않는다.
+
+실습에서는:
+
+```bash
+curl -k
+```
+
+를 사용해 인증서 검증을 생략했다.
+
+실제 서비스에서는 무조건 인증서 검증을 끄는 방식으로 운영하는 것이 아니다.
+
+---
+
+# 38. `--resolve`
+
+```bash
+--resolve ch08.local:31075:192.168.111.138
+```
+
+뜻:
+
+```text
+이번 curl 요청에서
+
+ch08.local
+     ↓
+192.168.111.138
+
+로 연결해라.
+```
+
+DNS를 직접 구성하지 않은 실습환경에서
+DNS 역할을 임시로 대신한다.
+
+---
+
+# 39. HTTPS 전체 트래픽
+
+```text
+Client
+ ↓ HTTPS
+Worker IP :31075
+ ↓
+nginx-ingress NodePort Service :443
+ ↓
+NGINX Ingress Controller
+ ↓
+ch08-tls 인증서 사용
+ ↓
+Host / Path 확인
+ ↓
+app1-service 또는 app2-service
+ ↓
+Pod
+```
+
+---
+
+# 40. IngressClass
+
+하나의 Cluster에 여러 Ingress Controller가 존재할 수 있다.
+
+예:
+
+```text
+Public NGINX Controller
+
+Private NGINX Controller
+
+다른 Controller
+```
+
+그러면 Ingress가 어느 Controller의 관리 대상인지 구분할 필요가 있다.
+
+그 역할을 하는 것이:
+
+```text
+IngressClass
+```
+
+이다.
+
+---
+
+# 41. ingressClassName
+
+Ingress:
+
+```yaml
+spec:
+  ingressClassName: nginx
+```
+
+구조:
+
+```text
+practice-ingress
+       ↓
+ingressClassName: nginx
+       ↓
+IngressClass nginx
+       ↓
+NGINX Ingress Controller
+```
+
+---
+
+# 42. IngressClass 확인
+
+```bash
+kubectl get ingressclass
+```
+
+자세히:
+
+```bash
+kubectl describe ingressclass nginx
+```
+
+또는:
+
+```bash
+kubectl get ingressclass nginx -o yaml
+```
+
+우리 환경의 Controller 식별자는:
+
+```text
+nginx.org/ingress-controller
+```
+
+형태이다.
+
+---
+
+# 43. IngressClass는 Controller가 아니다
+
+중요:
+
+```text
+IngressClass
+≠ Ingress Controller
+```
+
+IngressClass가 Controller를 실행하는 것이 아니다.
+
+```text
+IngressClass
+= 어떤 Controller가 처리할 것인지 구분
+
+Ingress Controller
+= 실제 요청 처리
+```
+
+이다.
+
+---
+
+# 44. 여러 Controller 사용 예
+
+예:
+
+```text
+Internet Service
+      ↓
+Ingress
+ingressClassName: public
+      ↓
+Public Controller
+```
+
+사내용:
+
+```text
+Internal Service
+      ↓
+Ingress
+ingressClassName: internal
+      ↓
+Internal Controller
+```
+
+처럼 구성할 수 있다.
+
+---
+
+# 45. Controller 하나가 여러 Ingress를 처리할 수 있다
+
+애플리케이션마다 Controller를 설치할 필요는 없다.
+
+```text
+NGINX Ingress Controller
+        ↑
+        ├─ 쇼핑몰 Ingress
+        ├─ 회원 Ingress
+        ├─ 주문 Ingress
+        └─ 관리자 Ingress
+```
+
+처럼 하나의 Controller가 여러 Ingress Resource를 처리할 수 있다.
+
+---
+
+# 46. 5~8장 전체 연결
+
+## 5장
+
+```text
+kubectl
+ ↓
+API Server
+ ↓
+Controller / Scheduler
+ ↓
+kubelet
+ ↓
+Container Runtime
+```
+
+## 6장
+
+```text
+Deployment
+ ↓
+ReplicaSet
+ ↓
+Pod
+
+Service
+ ↓
+Pod
+```
+
+## 7장
+
+```text
+ConfigMap → Pod ← Secret
+```
+
+## 8장
+
+```text
+Ingress Controller
+ ↓
+Service
+ ↓
+Pod
+```
+
+전체:
+
+```text
+                      ConfigMap
+                          ↓
+Deployment → ReplicaSet → Pod ← Secret
+                          ↑
+                       Service
+                          ↑
+                    Ingress Rule
+                          ↑
+                Ingress Controller
+                          ↑
+                        Client
+```
+
+---
+
+# 47. 리소스 생성 순서
+
+학습 및 일반적인 애플리케이션 구성 흐름:
+
+```text
+Namespace
+    ↓
+ConfigMap / Secret
+    ↓
+Deployment
+    ↓
+ReplicaSet 자동 생성
+    ↓
+Pod 자동 생성
+    ↓
+Service
+    ↓
+Ingress
+```
+
+Ingress Controller는 애플리케이션마다 만드는 것이 아니라
+클러스터에 미리 준비되어 있을 수 있다.
+
+---
+
+# 48. 각 Resource 역할
+
+```text
+Namespace
+= 리소스를 어디에 묶을 것인가
+
+ConfigMap
+= 일반 설정
+
+Secret
+= 민감 설정
+
+Deployment
+= Pod를 어떻게 운영할 것인가
+
+ReplicaSet
+= 원하는 Pod 수 유지
+
+Pod
+= Container 실행
+
+Service
+= Pod에 안정적으로 접근
+
+Ingress
+= HTTP/HTTPS 라우팅 규칙
+
+IngressClass
+= 어떤 Ingress Controller를 사용할지 구분
+
+Ingress Controller
+= 실제 HTTP/HTTPS 요청 처리
+```
+
+---
+
+# 49. 8장 핵심 면접 질문
+
+## Q1. Ingress가 필요한 이유는?
+
+여러 Service를 Host와 Path를 기준으로 하나의 외부 진입점에서 라우팅하기 위해 사용한다.
+
+---
+
+## Q2. Ingress와 Ingress Controller 차이는?
+
+```text
+Ingress
+= 라우팅 규칙
+
+Ingress Controller
+= 규칙을 읽어서 실제 트래픽을 처리
+```
+
+---
+
+## Q3. Ingress가 Pod로 직접 트래픽을 보내는가?
+
+일반적인 구성에서는 Service를 Backend로 사용한다.
+
+```text
+Ingress Controller
+↓
+Service
+↓
+Pod
+```
+
+---
+
+## Q4. 왜 app1-service는 ClusterIP인가?
+
+외부 요청은 Ingress Controller가 받고,
+app1-service는 Cluster 내부에서 Pod로 전달하면 되기 때문이다.
+
+---
+
+## Q5. IngressClass는 무엇인가?
+
+여러 Ingress Controller가 있을 때
+어떤 Controller가 해당 Ingress를 처리할지 선택하는 기준이다.
+
+---
+
+## Q6. Annotation은 무엇인가?
+
+Ingress Controller에게 세부 동작을 설정하기 위한 추가 설정이다.
+
+예:
+
+```text
+timeout
+redirect
+기타 Controller별 설정
+```
+
+---
+
+## Q7. TLS 인증서는 어디에 저장했는가?
+
+Kubernetes TLS Secret에 저장했다.
+
+```text
+Certificate + Private Key
+↓
+TLS Secret
+↓
+Ingress
+```
+
+---
+
+## Q8. 31075는 무엇인가?
+
+Ingress Controller 앞의 NodePort Service에 Kubernetes가 자동 배정한 HTTPS NodePort이다.
+
+```text
+Node :31075
+↓
+Service :443
+↓
+Ingress Controller
+```
+
+---
+
+## Q9. 31075를 우리가 직접 지정했는가?
+
+아니다.
+
+Controller용 Service YAML에서 `nodePort`를 지정하지 않았기 때문에
+Kubernetes가 자동으로 할당했다.
+
+---
+
+## Q10. 실제 실무에서도 애플리케이션마다 Ingress Controller를 설치하는가?
+
+보통 아니다.
+
+클러스터 수준에서 Controller를 운영하고
+여러 애플리케이션 Ingress가 이를 공유할 수 있다.
+
+---
+
+# 50. 주요 명령어
+
+Namespace:
+
+```bash
+kubectl get ns
+```
+
+Deployment / Service:
+
+```bash
+kubectl get deploy,rs,pod,svc \
+  -n ch08-practice \
+  -o wide
+```
+
+EndpointSlice:
+
+```bash
+kubectl get endpointslice -n ch08-practice
+```
+
+Ingress:
+
+```bash
+kubectl get ingress -n ch08-practice
+```
+
+```bash
+kubectl describe ingress practice-ingress \
+  -n ch08-practice
+```
+
+IngressClass:
+
+```bash
+kubectl get ingressclass
+```
+
+Controller Service:
+
+```bash
+kubectl get svc nginx-ingress \
+  -n nginx-ingress
+```
+
+HTTP:
+
+```bash
+curl -H "Host: ch08.local" \
+  http://192.168.111.138:31779/app1
+```
+
+HTTPS:
+
+```bash
+curl -k \
+  --resolve ch08.local:31075:192.168.111.138 \
+  https://ch08.local:31075/app1
+```
+
+---
+
+# 51. 8장 최종 핵심
+
+가장 중요한 구조:
+
+```text
+사용자
+   ↓
+Ingress Controller
+   ↓
+Ingress 규칙
+   ↓
+Service
+   ↓
+EndpointSlice
+   ↓
+Pod
+```
+
+반드시 구분:
+
+```text
+Ingress
+= 규칙
+
+Ingress Controller
+= 실제 프로그램
+```
+
+그리고:
+
+```text
+IngressClass
+= 어떤 Controller가 처리할지 선택
+```
+
+HTTPS:
+
+```text
+Certificate + Private Key
+        ↓
+TLS Secret
+        ↓
+Ingress
+        ↓
+Ingress Controller
+```
+
+---
+
+# 52. 8장 학습 완료 체크
+
+- [x] Ingress가 필요한 이유 이해
+- [x] NodePort와 Ingress 차이 이해
+- [x] Ingress와 Ingress Controller 차이 이해
+- [x] 설정 흐름과 실제 트래픽 흐름 구분
+- [x] Namespace 생성
+- [x] APP1 / APP2 Deployment 생성
+- [x] ReplicaSet / Pod 자동 생성 확인
+- [x] Service 생성
+- [x] ClusterIP 이해
+- [x] port / targetPort 이해
+- [x] EndpointSlice 확인
+- [x] Ingress 생성
+- [x] Host 기반 라우팅 이해
+- [x] Path 기반 라우팅 이해
+- [x] Prefix 이해
+- [x] Host 충돌 장애 확인
+- [x] kubectl describe ingress 확인
+- [x] HTTP `/app1` 테스트 성공
+- [x] HTTP `/app2` 테스트 성공
+- [x] Annotation 적용
+- [x] TLS 인증서 생성
+- [x] TLS Secret 생성
+- [x] Ingress TLS 연결
+- [x] HTTPS `/app1` 테스트 성공
+- [x] HTTPS `/app2` 테스트 성공
+- [x] Controller용 NodePort Service 이해
+- [x] 31779 / 31075가 어디서 생겼는지 이해
+- [x] IngressClass 이해
+- [x] 여러 Ingress Controller 개념 이해
+- [x] 5~8장 구조 연결
+
+
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/a9f3fea0-ba09-465f-9a8f-637101299b31" />
 
 
 </details>
