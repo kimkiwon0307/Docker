@@ -8540,6 +8540,2257 @@ Ingress Controller
 
 </details>
 
+<details>
+<summary><b>9장 Kubernetes 영속성 관리</b></summary>
+# Chapter 09. Kubernetes 영속성 관리
 
+## 1. 학습 목표
 
+이번 장에서는 Kubernetes에서 컨테이너와 Pod의 데이터를 어떻게 저장하고 유지하는지 학습했다.
+
+주요 학습 내용은 다음과 같다.
+
+- `hostPath`
+- `emptyDir`
+- Network Volume 개념
+- PersistentVolume(PV)
+- PersistentVolumeClaim(PVC)
+- PV/PVC Binding
+- AccessMode
+- PV Lifecycle
+- ReclaimPolicy
+- StorageClass
+- Static Provisioning
+- Dynamic Provisioning
+- Local Path Provisioner
+- WaitForFirstConsumer
+
+---
+
+# 2. Kubernetes에서 Storage가 필요한 이유
+
+컨테이너 내부 파일시스템에만 데이터를 저장하면 컨테이너가 제거될 때 데이터도 사라질 수 있다.
+
+따라서 애플리케이션 데이터와 컨테이너의 생명주기를 분리할 필요가 있다.
+
+```text
+Container
+   │
+   ▼
+Volume
+   │
+   ▼
+Storage
+```
+
+다만 중요한 점은:
+
+```text
+Volume = 무조건 영구 저장
+```
+
+은 아니다.
+
+Volume 종류에 따라 데이터의 생명주기가 다르다.
+
+---
+
+# 3. hostPath
+
+## 3.1 개념
+
+`hostPath`는 Kubernetes Node의 실제 디렉터리를 Pod 내부에 Mount하는 방식이다.
+
+```text
+Pod
+/mnt/data
+   │
+   │ Mount
+   ▼
+Worker Node
+/data/ch09
+```
+
+즉 Pod에서 `/mnt/data`에 파일을 저장하면 실제 Node의 `/data/ch09`에 저장된다.
+
+---
+
+## 3.2 실습
+
+```yaml
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: hostpath-test
+  namespace: ch09-practice
+
+spec:
+  nodeName: worker1
+
+  containers:
+    - name: test
+      image: busybox:1.36
+
+      command:
+        - sh
+        - -c
+        - |
+          echo "Hello hostPath" > /mnt/data/test.txt
+          sleep 3600
+
+      volumeMounts:
+        - name: host-data
+          mountPath: /mnt/data
+
+  volumes:
+    - name: host-data
+      hostPath:
+        path: /data/ch09
+        type: DirectoryOrCreate
+```
+
+적용:
+
+```bash
+kubectl apply -f hostpath.yaml
+```
+
+Pod 확인:
+
+```bash
+kubectl get pod -n ch09-practice -o wide
+```
+
+Pod 내부 파일 확인:
+
+```bash
+kubectl exec hostpath-test \
+  -n ch09-practice \
+  -- cat /mnt/data/test.txt
+```
+
+결과:
+
+```text
+Hello hostPath
+```
+
+worker1에서 확인:
+
+```bash
+sudo cat /data/ch09/test.txt
+```
+
+같은 데이터가 확인된다.
+
+---
+
+# 4. hostPath의 특징
+
+```text
+Pod
+ ↓
+hostPath
+ ↓
+Node 로컬 디스크
+```
+
+장점:
+
+- 구조가 단순하다.
+- 테스트하기 쉽다.
+- Node의 파일이나 디렉터리를 Pod에서 사용할 수 있다.
+
+단점:
+
+- 특정 Node에 종속된다.
+- Pod가 다른 Node로 이동하면 같은 데이터를 사용할 수 없다.
+- 일반적인 애플리케이션 영속 Storage로는 적합하지 않은 경우가 많다.
+
+예:
+
+```text
+worker1
+/data/ch09/test.txt 존재
+
+worker2
+/data/ch09/test.txt 없음
+```
+
+---
+
+# 5. emptyDir
+
+## 5.1 개념
+
+`emptyDir`은 Pod가 생성될 때 만들어지는 임시 Volume이다.
+
+같은 Pod 안에 있는 여러 Container가 데이터를 공유할 때 사용할 수 있다.
+
+```text
+Pod
+│
+├── writer Container
+│       │
+│       ▼
+│    /shared
+│
+├── reader Container
+│       │
+│       ▼
+│    /shared
+│
+└── emptyDir
+```
+
+---
+
+## 5.2 실습
+
+```yaml
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: emptydir-test
+  namespace: ch09-practice
+
+spec:
+  containers:
+    - name: writer
+      image: busybox:1.36
+
+      command:
+        - sh
+        - -c
+        - |
+          echo "Hello from writer" > /shared/message.txt
+          sleep 3600
+
+      volumeMounts:
+        - name: shared-data
+          mountPath: /shared
+
+    - name: reader
+      image: busybox:1.36
+
+      command:
+        - sh
+        - -c
+        - |
+          sleep 3600
+
+      volumeMounts:
+        - name: shared-data
+          mountPath: /shared
+
+  volumes:
+    - name: shared-data
+      emptyDir: {}
+```
+
+적용:
+
+```bash
+kubectl apply -f emptydir.yaml
+```
+
+writer Container에서 확인:
+
+```bash
+kubectl exec emptydir-test \
+  -n ch09-practice \
+  -c writer \
+  -- cat /shared/message.txt
+```
+
+reader Container에서 확인:
+
+```bash
+kubectl exec emptydir-test \
+  -n ch09-practice \
+  -c reader \
+  -- cat /shared/message.txt
+```
+
+두 Container에서 같은 데이터가 보인다.
+
+---
+
+# 6. emptyDir의 생명주기
+
+```text
+Container 재시작
+→ Pod가 존재하면 Volume 유지 가능
+
+Pod 삭제
+→ emptyDir 삭제
+→ 데이터 삭제
+```
+
+즉:
+
+```text
+emptyDir의 생명주기
+=
+Pod의 생명주기
+```
+
+이다.
+
+주요 용도:
+
+- Container 간 임시 파일 공유
+- 캐시
+- 중간 처리 파일
+- 임시 작업 공간
+
+---
+
+# 7. Network Volume
+
+Node의 로컬 디스크가 아니라 외부 Storage를 네트워크를 통해 사용할 수도 있다.
+
+예:
+
+```text
+NFS
+AWS EBS
+AWS EFS
+Ceph
+CSI 기반 Storage
+```
+
+구조:
+
+```text
+Node1 Pod ─┐
+           │
+           ├── External / Network Storage
+           │
+Node2 Pod ─┘
+```
+
+이런 Storage를 Kubernetes에서 보다 일관된 방식으로 사용하기 위해 PV와 PVC를 사용한다.
+
+---
+
+# 8. PV와 PVC
+
+## 8.1 PV란?
+
+PV는 `PersistentVolume`의 약자다.
+
+Kubernetes Cluster에서 사용할 수 있도록 준비된 Storage Resource이다.
+
+```text
+실제 Storage
+/data/ch09-pv
+
+       ↑
+
+PV
+pv-ch09-1
+capacity: 1Gi
+```
+
+PV는 실제 Storage 자체라기보다는 Kubernetes가 해당 Storage를 사용할 수 있도록 표현한 Resource라고 이해하면 된다.
+
+---
+
+# 9. PVC란?
+
+PVC는 `PersistentVolumeClaim`의 약자다.
+
+애플리케이션이 필요한 Storage를 요청하는 Resource이다.
+
+예:
+
+```text
+PVC
+
+"ReadWriteOnce 방식으로
+최소 500Mi 저장공간이 필요합니다."
+```
+
+전체 관계:
+
+```text
+Pod
+ ↓
+PVC
+ ↓
+PV
+ ↓
+Actual Storage
+```
+
+---
+
+# 10. 왜 Pod가 PV를 직접 사용하지 않는가?
+
+Pod가 실제 Storage 정보를 직접 알고 있으면 애플리케이션과 인프라가 강하게 결합된다.
+
+예:
+
+```text
+Pod
+ ↓
+특정 PV
+ ↓
+특정 Storage
+```
+
+대신 PVC를 사용하면:
+
+```text
+Pod
+ ↓
+PVC
+ ↓
+PV
+ ↓
+Storage
+```
+
+로 추상화할 수 있다.
+
+Pod 입장에서는:
+
+```text
+"저는 이 PVC를 사용하겠습니다."
+```
+
+만 알면 된다.
+
+실제 Storage가 무엇인지까지 직접 알 필요가 없다.
+
+---
+
+# 11. Static Provisioning
+
+Static Provisioning은 관리자가 PV를 먼저 직접 생성하는 방식이다.
+
+```text
+관리자
+ ↓
+PV 직접 생성
+ ↓
+PVC 생성
+ ↓
+PV / PVC Binding
+ ↓
+Pod가 PVC 사용
+```
+
+---
+
+# 12. Static PV 생성
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+
+metadata:
+  name: pv-ch09-repeat
+
+spec:
+  capacity:
+    storage: 1Gi
+
+  accessModes:
+    - ReadWriteOnce
+
+  persistentVolumeReclaimPolicy: Retain
+
+  storageClassName: manual
+
+  hostPath:
+    path: /data/ch09-pv-repeat
+    type: DirectoryOrCreate
+```
+
+적용:
+
+```bash
+kubectl apply -f pv-repeat.yaml
+```
+
+확인:
+
+```bash
+kubectl get pv
+```
+
+PVC와 아직 연결되지 않았다면:
+
+```text
+STATUS
+Available
+```
+
+상태가 된다.
+
+---
+
+# 13. PVC 생성
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: pvc-ch09-repeat
+  namespace: ch09-practice
+
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  storageClassName: manual
+
+  resources:
+    requests:
+      storage: 500Mi
+```
+
+적용:
+
+```bash
+kubectl apply -f pvc-repeat.yaml
+```
+
+확인:
+
+```bash
+kubectl get pvc -n ch09-practice
+```
+
+```bash
+kubectl get pv
+```
+
+조건이 맞으면:
+
+```text
+PV  = Bound
+PVC = Bound
+```
+
+가 된다.
+
+---
+
+# 14. Bound란?
+
+`Bound`는 PVC와 특정 PV가 연결된 상태이다.
+
+```text
+PVC
+500Mi 요청
+
+     ↕
+
+   Bound
+
+     ↕
+
+PV
+1Gi 제공
+```
+
+PVC가 해당 PV를 사용하도록 연결된 것이다.
+
+---
+
+# 15. PVC 500Mi와 PV 1Gi
+
+PVC:
+
+```text
+500Mi 요청
+```
+
+PV:
+
+```text
+1Gi 제공
+```
+
+일 때:
+
+```text
+1Gi >= 500Mi
+```
+
+이므로 연결 가능하다.
+
+PVC의 요청 용량은:
+
+```text
+최대 500Mi만 사용할 수 있다
+```
+
+는 의미라기보다:
+
+```text
+최소 500Mi 이상의 Storage가 필요하다
+```
+
+라는 요청이다.
+
+---
+
+# 16. PV Capacity와 실제 Node 디스크
+
+다음 설정:
+
+```yaml
+capacity:
+  storage: 1Gi
+```
+
+은:
+
+```text
+Node 전체 디스크가 1Gi
+```
+
+라는 의미가 아니다.
+
+의미:
+
+```text
+이 PV가 Kubernetes에 1Gi Storage로 제공된다
+```
+
+이다.
+
+이번 실습의 `hostPath`는 실제 Node 파일시스템을 사용하기 때문에 `capacity: 1Gi`라고 선언했다고 해서 Node 디스크 사용량을 실제로 정확히 1Gi에서 차단하는 것은 아니다.
+
+---
+
+# 17. Pod에서 PVC 사용
+
+```yaml
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: pvc-repeat-test
+  namespace: ch09-practice
+
+spec:
+  nodeName: worker1
+
+  containers:
+    - name: test
+      image: busybox:1.36
+
+      command:
+        - sh
+        - -c
+        - |
+          echo "PV PVC TEST" > /data/test.txt
+          sleep 3600
+
+      volumeMounts:
+        - name: my-storage
+          mountPath: /data
+
+  volumes:
+    - name: my-storage
+      persistentVolumeClaim:
+        claimName: pvc-ch09-repeat
+```
+
+Pod는 실제 PV 이름을 지정하지 않는다.
+
+```yaml
+persistentVolumeClaim:
+  claimName: pvc-ch09-repeat
+```
+
+만 사용한다.
+
+구조:
+
+```text
+Pod
+/data
+ ↓
+PVC
+pvc-ch09-repeat
+ ↓
+PV
+pv-ch09-repeat
+ ↓
+Storage
+/data/ch09-pv-repeat
+```
+
+---
+
+# 18. 데이터 확인
+
+Pod 내부:
+
+```bash
+kubectl exec pvc-repeat-test \
+  -n ch09-practice \
+  -- cat /data/test.txt
+```
+
+결과:
+
+```text
+PV PVC TEST
+```
+
+worker1:
+
+```bash
+sudo cat /data/ch09-pv-repeat/test.txt
+```
+
+같은 데이터가 확인된다.
+
+---
+
+# 19. Pod 삭제 후 데이터 유지
+
+Pod 삭제:
+
+```bash
+kubectl delete pod pvc-repeat-test \
+  -n ch09-practice
+```
+
+PVC 확인:
+
+```bash
+kubectl get pvc -n ch09-practice
+```
+
+PV 확인:
+
+```bash
+kubectl get pv
+```
+
+Pod를 삭제해도 PVC와 PV는 그대로 유지될 수 있다.
+
+```text
+Pod 삭제
+ ↓
+PVC 유지
+ ↓
+PV 유지
+ ↓
+Storage 유지
+```
+
+이것이 Pod 생명주기와 Storage 생명주기를 분리하는 중요한 이유이다.
+
+---
+
+# 20. PV 선택 조건
+
+PVC는 아무 PV하고나 Bound되는 것이 아니다.
+
+주요 Matching 조건:
+
+```text
+PVC
+ │
+ ├── 요청 용량
+ ├── AccessMode
+ ├── StorageClass
+ └── 사용 가능한 PV인지
+       ↓
+    Matching
+       ↓
+     Bound
+```
+
+---
+
+# 21. Capacity 조건
+
+예:
+
+```text
+PVC 요청
+500Mi
+```
+
+PV별 결과:
+
+```text
+PV 100Mi  → 불가능
+PV 500Mi  → 가능
+PV 1Gi    → 가능
+PV 10Gi   → 가능
+```
+
+PV는 PVC가 요청한 용량 이상이어야 한다.
+
+---
+
+# 22. AccessMode
+
+대표적인 AccessMode:
+
+```text
+RWO
+ROX
+RWX
+RWOP
+```
+
+---
+
+## 22.1 RWO
+
+```text
+ReadWriteOnce
+```
+
+하나의 Node에서 Read/Write로 Mount할 수 있다.
+
+중요:
+
+```text
+RWO = Pod 하나만 사용 가능
+```
+
+이라고 단순하게 이해하면 정확하지 않다.
+
+핵심은 Node 기준이다.
+
+---
+
+## 22.2 ROX
+
+```text
+ReadOnlyMany
+```
+
+여러 Node에서 Read Only로 Mount 가능하다.
+
+```text
+Node1 Pod ─┐
+           ├── Storage 읽기
+Node2 Pod ─┘
+```
+
+---
+
+## 22.3 RWX
+
+```text
+ReadWriteMany
+```
+
+여러 Node에서 동시에 Read/Write 가능하다.
+
+공유 Storage 계열에서 사용될 수 있다.
+
+---
+
+## 22.4 RWOP
+
+```text
+ReadWriteOncePod
+```
+
+Cluster 전체에서 한 Pod만 Read/Write로 Mount할 수 있도록 제한하는 방식이다.
+
+---
+
+# 23. PVC Pending 실습
+
+조건에 맞는 PV가 없다면 PVC는 `Pending` 상태가 된다.
+
+예:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: pvc-pending
+  namespace: ch09-practice
+
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  storageClassName: manual
+
+  resources:
+    requests:
+      storage: 5Gi
+```
+
+확인:
+
+```bash
+kubectl get pvc -n ch09-practice
+```
+
+결과:
+
+```text
+pvc-pending   Pending
+```
+
+원인 확인:
+
+```bash
+kubectl describe pvc pvc-pending \
+  -n ch09-practice
+```
+
+---
+
+# 24. PVC가 Pending이 될 수 있는 원인
+
+```text
+1. 조건에 맞는 PV가 없음
+2. PV 용량 부족
+3. AccessMode 불일치
+4. StorageClass 불일치
+5. Provisioner 문제
+6. WaitForFirstConsumer 상태
+```
+
+PVC 문제에서는 `describe`의 Events를 확인하는 것이 중요하다.
+
+---
+
+# 25. PV Lifecycle
+
+이번 장에서 중요하게 확인한 PV 상태:
+
+```text
+Available
+ ↓
+Bound
+ ↓
+Released
+```
+
+---
+
+## 25.1 Available
+
+아직 PVC와 연결되지 않은 상태.
+
+```text
+사용 가능한 PV
+```
+
+---
+
+## 25.2 Bound
+
+PV와 PVC가 연결된 상태.
+
+```text
+PV ↔ PVC
+```
+
+---
+
+## 25.3 Released
+
+PVC가 삭제되었지만 PV가 이전 PVC의 흔적과 데이터를 가지고 있는 상태.
+
+특히 `Retain` 정책에서 확인할 수 있다.
+
+---
+
+# 26. ReclaimPolicy
+
+ReclaimPolicy는 PVC가 삭제된 이후 PV와 실제 Storage를 어떻게 처리할지 결정한다.
+
+핵심 정책:
+
+```text
+Retain
+Delete
+```
+
+---
+
+# 27. Retain
+
+```text
+PVC 삭제
+ ↓
+PV Released
+ ↓
+데이터 유지
+ ↓
+관리자가 수동 확인/정리
+```
+
+장점:
+
+- 데이터 보호에 유리
+
+단점:
+
+- 관리자가 직접 정리해야 할 수 있음
+
+실습에서는:
+
+```text
+pv-ch09-repeat
+```
+
+이:
+
+```text
+Bound
+↓
+Released
+```
+
+로 변경되는 것을 확인했다.
+
+---
+
+# 28. Delete
+
+```text
+PVC 삭제
+ ↓
+PV 삭제
+ ↓
+Provisioner가 Storage 정리
+```
+
+Dynamic Provisioning 환경에서 많이 사용된다.
+
+클라우드 환경에서는 실제 Storage 삭제까지 연결될 수 있으므로 운영 시 주의가 필요하다.
+
+---
+
+# 29. Retain vs Delete
+
+```text
+Retain
+
+PVC 삭제
+ ↓
+PV Released
+ ↓
+Storage 유지
+ ↓
+관리자 처리
+```
+
+```text
+Delete
+
+PVC 삭제
+ ↓
+PV 삭제
+ ↓
+Storage 자동 정리 가능
+```
+
+---
+
+# 30. StorageClass
+
+StorageClass는 Storage 자체가 아니다.
+
+Storage를 어떤 방식으로 제공할 것인지 정의하는 정책 Resource이다.
+
+예:
+
+```text
+어떤 Provisioner를 사용할 것인가?
+어떻게 Storage를 만들 것인가?
+언제 Volume을 Binding할 것인가?
+삭제 시 어떻게 처리할 것인가?
+```
+
+---
+
+# 31. StorageClass 확인
+
+```bash
+kubectl get sc
+```
+
+실습 결과:
+
+```text
+NAME         PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE
+local-path   rancher.io/local-path   Delete          WaitForFirstConsumer
+```
+
+해석:
+
+```text
+NAME
+local-path
+→ StorageClass 이름
+```
+
+```text
+PROVISIONER
+rancher.io/local-path
+→ PV와 실제 Storage 생성 담당
+```
+
+```text
+RECLAIMPOLICY
+Delete
+→ PVC 삭제 후 자동 생성된 Storage 정리
+```
+
+```text
+VOLUMEBINDINGMODE
+WaitForFirstConsumer
+→ 실제 사용하는 Pod가 생길 때까지 Provisioning/Binding 대기
+```
+
+---
+
+# 32. Static Provisioning
+
+```text
+관리자
+ ↓
+PV 직접 생성
+ ↓
+PVC 생성
+ ↓
+Bound
+```
+
+특징:
+
+- 관리자가 Storage를 미리 준비
+- PV를 직접 생성
+- PVC가 조건에 맞는 PV를 찾아 Binding
+
+---
+
+# 33. Dynamic Provisioning
+
+Dynamic Provisioning에서는 PVC 요청을 기반으로 Storage와 PV를 자동 생성할 수 있다.
+
+```text
+PVC
+ ↓
+StorageClass
+ ↓
+Provisioner / CSI Driver
+ ↓
+Actual Storage 생성
+ ↓
+PV 자동 생성
+ ↓
+PVC ↔ PV Bound
+```
+
+중요한 차이:
+
+```text
+Static
+PV를 사람이 직접 생성
+```
+
+```text
+Dynamic
+PV를 Provisioner가 자동 생성
+```
+
+---
+
+# 34. Local Path Provisioner
+
+이번 kubeadm 실습에서는 Local Path Provisioner를 사용했다.
+
+구조:
+
+```text
+PVC
+ ↓
+StorageClass
+local-path
+ ↓
+Local Path Provisioner
+ ↓
+Node Local Storage
+ ↓
+PV 자동 생성
+```
+
+이 실습의 목적은 실제 클라우드 Storage 대신 로컬 환경에서 Dynamic Provisioning 동작을 이해하는 것이다.
+
+---
+
+# 35. Dynamic PVC 생성
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: dynamic-pvc
+  namespace: ch09-practice
+
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  storageClassName: local-path
+
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+적용:
+
+```bash
+kubectl apply -f dynamic-pvc.yaml
+```
+
+확인:
+
+```bash
+kubectl get pvc -n ch09-practice
+```
+
+처음에는:
+
+```text
+dynamic-pvc   Pending
+```
+
+상태였다.
+
+---
+
+# 36. 왜 Dynamic PVC가 Pending이었는가?
+
+StorageClass 설정:
+
+```text
+WaitForFirstConsumer
+```
+
+때문이다.
+
+PVC 상세 확인:
+
+```bash
+kubectl describe pvc dynamic-pvc \
+  -n ch09-practice
+```
+
+확인한 내용:
+
+```text
+Status: Pending
+Used By: <none>
+
+WaitForFirstConsumer
+waiting for first consumer to be created before binding
+```
+
+즉:
+
+```text
+PVC 생성
+ ↓
+아직 사용하는 Pod 없음
+ ↓
+어느 Node Storage를 만들어야 할지 결정하지 않음
+ ↓
+Pending
+```
+
+이었다.
+
+---
+
+# 37. WaitForFirstConsumer
+
+`WaitForFirstConsumer`는 PVC를 사용하는 Pod가 실제로 생성될 때까지 Storage Provisioning이나 Binding을 기다리는 방식이다.
+
+```text
+PVC 생성
+ ↓
+Pending
+ ↓
+Pod 생성
+ ↓
+Scheduler가 Node 결정
+ ↓
+Storage 준비
+ ↓
+PV 생성
+ ↓
+PVC Bound
+```
+
+Node나 Availability Zone 등 Storage 위치가 중요한 환경에서 유용하다.
+
+---
+
+# 38. Dynamic Pod 생성
+
+```yaml
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: dynamic-pod
+  namespace: ch09-practice
+
+spec:
+  containers:
+    - name: test
+      image: busybox:1.36
+
+      command:
+        - sh
+        - -c
+        - |
+          echo "Dynamic Provisioning Test" > /data/test.txt
+          sleep 3600
+
+      volumeMounts:
+        - name: dynamic-storage
+          mountPath: /data
+
+  volumes:
+    - name: dynamic-storage
+      persistentVolumeClaim:
+        claimName: dynamic-pvc
+```
+
+적용:
+
+```bash
+kubectl apply -f dynamic-pod.yaml
+```
+
+Pod 확인:
+
+```bash
+kubectl get pod dynamic-pod \
+  -n ch09-practice \
+  -o wide
+```
+
+실습에서는:
+
+```text
+dynamic-pod
+Running
+worker2
+```
+
+에 배치되었다.
+
+---
+
+# 39. Dynamic PV 자동 생성
+
+Pod 생성 후 PVC 확인:
+
+```bash
+kubectl get pvc -n ch09-practice
+```
+
+결과:
+
+```text
+dynamic-pvc
+Bound
+1Gi
+RWO
+local-path
+```
+
+PV 확인:
+
+```bash
+kubectl get pv
+```
+
+자동 생성된 PV:
+
+```text
+pvc-08e70bea-e75a-4dd9-8093-46b6ccdc3f55
+```
+
+중요:
+
+```text
+이 PV는 직접 생성하지 않았다.
+```
+
+Provisioner가 자동으로 생성했다.
+
+---
+
+# 40. Dynamic Provisioning 실제 흐름
+
+```text
+dynamic-pvc 생성
+ ↓
+StorageClass = local-path
+ ↓
+WaitForFirstConsumer
+ ↓
+PVC Pending
+ ↓
+dynamic-pod 생성
+ ↓
+Scheduler
+ ↓
+worker2 선택
+ ↓
+Local Path Provisioner 동작
+ ↓
+worker2 Storage 준비
+ ↓
+PV 자동 생성
+ ↓
+PVC ↔ PV Bound
+ ↓
+Pod Running
+```
+
+---
+
+# 41. Dynamic Storage 데이터 확인
+
+```bash
+kubectl exec dynamic-pod \
+  -n ch09-practice \
+  -- cat /data/test.txt
+```
+
+결과:
+
+```text
+Dynamic Provisioning Test
+```
+
+---
+
+# 42. 직접 만든 Resource와 자동 생성된 Resource
+
+## Static Provisioning
+
+직접 생성:
+
+```text
+PV
+PVC
+Pod
+```
+
+Kubernetes가 처리:
+
+```text
+PV ↔ PVC Matching
+Binding
+```
+
+---
+
+## Dynamic Provisioning
+
+직접 생성:
+
+```text
+PVC
+Pod
+```
+
+Provisioner가 자동 처리:
+
+```text
+Storage 생성
+PV 생성
+PVC와 Binding
+```
+
+---
+
+# 43. Dynamic PV의 ReclaimPolicy
+
+자동 생성된 PV:
+
+```text
+pvc-08e70bea...
+```
+
+의 ReclaimPolicy는:
+
+```text
+Delete
+```
+
+였다.
+
+이유:
+
+```text
+StorageClass local-path
+reclaimPolicy = Delete
+```
+
+를 사용했기 때문이다.
+
+```text
+StorageClass
+Delete
+ ↓
+Dynamic PV
+Delete
+```
+
+---
+
+# 44. Dynamic Pod 삭제
+
+```bash
+kubectl delete pod dynamic-pod \
+  -n ch09-practice
+```
+
+Pod가 삭제되어도 PVC가 존재하면:
+
+```text
+PVC 유지
+PV 유지
+Storage 유지
+```
+
+된다.
+
+즉:
+
+```text
+Pod 삭제
+≠
+PVC 삭제
+```
+
+이다.
+
+---
+
+# 45. Dynamic PVC 삭제
+
+```bash
+kubectl delete pvc dynamic-pvc \
+  -n ch09-practice
+```
+
+Dynamic PV의 ReclaimPolicy가 `Delete`였기 때문에:
+
+```text
+PVC 삭제
+ ↓
+PV 삭제
+ ↓
+Provisioner가 Storage 정리
+```
+
+가 발생했다.
+
+---
+
+# 46. Static vs Dynamic Provisioning 비교
+
+| 구분 | Static Provisioning | Dynamic Provisioning |
+|---|---|---|
+| PV 생성 | 관리자가 직접 | Provisioner 자동 |
+| PVC 생성 | 사용자 | 사용자 |
+| Storage 준비 | 미리 준비 | 요청에 따라 생성 |
+| StorageClass | 선택적으로 사용 | 중요 |
+| 운영 편의성 | 상대적으로 낮음 | 높음 |
+| 대표 구조 | PV → PVC | PVC → StorageClass → Provisioner |
+| 주요 환경 | 기존 Storage 연결 | 클라우드 및 자동화 환경 |
+
+---
+
+# 47. Volume 종류 비교
+
+| 종류 | 실제 데이터 위치 | Pod 삭제 후 | 특징 |
+|---|---|---|---|
+| Container filesystem | Container 내부 | 손실 가능 | 임시 저장 |
+| emptyDir | Pod Volume | 삭제 | Pod 내 Container 공유 |
+| hostPath | Node 로컬 디스크 | 유지 가능 | Node 종속 |
+| PV/PVC | 연결된 Storage | 정책에 따라 다름 | Pod와 Storage 분리 |
+| Dynamic PVC | Provisioner가 생성한 Storage | ReclaimPolicy에 따라 다름 | 운영 자동화 |
+
+---
+
+# 48. AWS 환경에서는 어떻게 사용하는가?
+
+실무 AWS 환경에서는 개념적으로 다음과 같다.
+
+```text
+Pod
+ ↓
+PVC
+ ↓
+StorageClass
+ ↓
+EBS CSI Driver
+ ↓
+AWS API
+ ↓
+EBS Volume 생성
+ ↓
+PV 자동 생성
+ ↓
+PVC Bound
+```
+
+즉 사용자는:
+
+```text
+10Gi Storage 필요
+```
+
+라고 PVC를 생성하고,
+
+StorageClass와 CSI Driver가 실제 EBS Volume을 준비한다.
+
+---
+
+# 49. StorageClass와 CSI Driver 차이
+
+```text
+StorageClass
+=
+어떤 방식으로 Storage를 만들 것인지 정의
+```
+
+```text
+CSI Driver
+=
+실제로 외부 Storage 시스템과 통신해서
+Volume 생성/삭제/Mount 등의 작업 수행
+```
+
+구조:
+
+```text
+PVC
+ ↓
+StorageClass
+ ↓
+CSI Driver
+ ↓
+Cloud Storage
+```
+
+---
+
+# 50. Kubernetes 전체 Resource 관계
+
+지금까지 학습한 Resource들을 같이 보면:
+
+```text
+Deployment
+ ↓
+ReplicaSet
+ ↓
+Pod
+ │
+ ├── ConfigMap
+ │
+ ├── Secret
+ │
+ └── PVC
+      ↓
+     PV
+      ↓
+   Storage
+```
+
+Service까지 포함하면:
+
+```text
+Client
+ ↓
+Ingress Controller
+ ↓
+Service
+ ↓
+Pod
+ ↓
+PVC
+ ↓
+PV
+ ↓
+Storage
+```
+
+관리 관계:
+
+```text
+Deployment
+ ↓
+ReplicaSet
+ ↓
+Pod
+```
+
+Traffic 관계:
+
+```text
+Service
+ ↓
+Pod
+```
+
+Storage 관계:
+
+```text
+Pod
+ ↓
+PVC
+ ↓
+PV
+ ↓
+Storage
+```
+
+---
+
+# 51. 장애 대응
+
+## PVC가 Pending인 경우
+
+먼저:
+
+```bash
+kubectl get pvc -n <namespace>
+```
+
+상세 확인:
+
+```bash
+kubectl describe pvc <pvc-name> \
+  -n <namespace>
+```
+
+점검 순서:
+
+```text
+PVC Pending
+ ↓
+StorageClass 확인
+ ↓
+Provisioner 확인
+ ↓
+요청 Capacity 확인
+ ↓
+AccessMode 확인
+ ↓
+Available PV 확인
+ ↓
+WaitForFirstConsumer 확인
+ ↓
+Events 확인
+```
+
+---
+
+# 52. Pod가 Storage 때문에 실행되지 않는 경우
+
+Pod 확인:
+
+```bash
+kubectl get pod -n <namespace>
+```
+
+Pod 상세:
+
+```bash
+kubectl describe pod <pod-name> \
+  -n <namespace>
+```
+
+PVC:
+
+```bash
+kubectl get pvc -n <namespace>
+```
+
+PVC 상세:
+
+```bash
+kubectl describe pvc <pvc-name> \
+  -n <namespace>
+```
+
+PV:
+
+```bash
+kubectl get pv
+```
+
+StorageClass:
+
+```bash
+kubectl get sc
+```
+
+---
+
+# 53. 핵심 명령어
+
+Namespace:
+
+```bash
+kubectl create namespace ch09-practice
+```
+
+PV 목록:
+
+```bash
+kubectl get pv
+```
+
+PV 상세:
+
+```bash
+kubectl describe pv <pv-name>
+```
+
+PVC 목록:
+
+```bash
+kubectl get pvc -n ch09-practice
+```
+
+PVC 상세:
+
+```bash
+kubectl describe pvc <pvc-name> \
+  -n ch09-practice
+```
+
+StorageClass:
+
+```bash
+kubectl get storageclass
+```
+
+또는:
+
+```bash
+kubectl get sc
+```
+
+Pod:
+
+```bash
+kubectl get pod -n ch09-practice -o wide
+```
+
+Pod 내부 파일 확인:
+
+```bash
+kubectl exec <pod-name> \
+  -n ch09-practice \
+  -- cat /data/test.txt
+```
+
+---
+
+# 54. 면접 질문
+
+## Q1. PV란 무엇인가요?
+
+PV는 Kubernetes Cluster에서 사용할 수 있도록 제공되는 Persistent Storage Resource입니다.
+
+실제 Storage를 Kubernetes Resource 형태로 추상화한 것이라고 볼 수 있습니다.
+
+---
+
+## Q2. PVC란 무엇인가요?
+
+PVC는 애플리케이션이 필요한 Storage 용량과 AccessMode 등을 요청하는 Resource입니다.
+
+---
+
+## Q3. PV와 PVC의 관계는 무엇인가요?
+
+```text
+Pod
+ ↓
+PVC
+ ↓
+PV
+ ↓
+Storage
+```
+
+PVC가 필요한 Storage 조건을 요청하면 조건에 맞는 PV와 Binding됩니다.
+
+---
+
+## Q4. Bound는 무슨 의미인가요?
+
+PVC와 특정 PV가 연결된 상태입니다.
+
+PVC가 해당 PV의 Storage를 사용할 수 있도록 할당된 상태라고 이해할 수 있습니다.
+
+---
+
+## Q5. PVC가 500Mi이고 PV가 1Gi여도 Bound될 수 있나요?
+
+가능합니다.
+
+PV Capacity가 PVC가 요청한 용량 이상이면 조건 중 하나를 만족합니다.
+
+```text
+1Gi >= 500Mi
+```
+
+---
+
+## Q6. PVC가 Pending인 경우 무엇을 확인해야 하나요?
+
+다음을 확인합니다.
+
+```text
+Capacity
+AccessMode
+StorageClass
+Available PV
+Provisioner
+WaitForFirstConsumer
+Events
+```
+
+---
+
+## Q7. hostPath의 단점은 무엇인가요?
+
+특정 Node의 로컬 파일시스템에 종속됩니다.
+
+Pod가 다른 Node로 이동하면 기존 데이터를 사용할 수 없는 문제가 발생할 수 있습니다.
+
+---
+
+## Q8. emptyDir은 언제 사용하나요?
+
+같은 Pod 내부 Container끼리 임시 데이터를 공유하거나 캐시, 중간 작업 파일 등을 저장할 때 사용할 수 있습니다.
+
+Pod가 삭제되면 데이터도 삭제됩니다.
+
+---
+
+## Q9. Static Provisioning과 Dynamic Provisioning 차이는 무엇인가요?
+
+Static Provisioning은 관리자가 PV를 직접 미리 생성합니다.
+
+Dynamic Provisioning은 PVC 요청을 기반으로 StorageClass와 Provisioner/CSI Driver가 PV와 실제 Storage를 자동 생성합니다.
+
+---
+
+## Q10. StorageClass란 무엇인가요?
+
+StorageClass는 Storage 자체가 아니라 Storage를 어떤 방식으로 제공할지 정의하는 정책 Resource입니다.
+
+---
+
+## Q11. CSI Driver란 무엇인가요?
+
+Kubernetes가 외부 Storage 시스템과 통신할 수 있게 해주는 Driver입니다.
+
+예를 들어 AWS에서는 EBS CSI Driver가 EBS Volume 생성, 연결, 해제 등의 작업을 수행할 수 있습니다.
+
+---
+
+## Q12. Retain과 Delete의 차이는 무엇인가요?
+
+### Retain
+
+```text
+PVC 삭제
+ ↓
+PV Released
+ ↓
+데이터 유지
+```
+
+관리자가 직접 데이터를 확인하고 정리해야 한다.
+
+### Delete
+
+```text
+PVC 삭제
+ ↓
+PV 삭제
+ ↓
+Storage 삭제 가능
+```
+
+자동화된 Storage 환경에서 많이 사용된다.
+
+---
+
+## Q13. WaitForFirstConsumer란 무엇인가요?
+
+PVC를 생성하자마자 Volume을 Binding하지 않고, 실제로 그 PVC를 사용하는 Pod가 생성될 때까지 기다리는 방식입니다.
+
+Pod가 어느 Node나 Zone에 배치되는지 고려해 Storage를 준비할 수 있습니다.
+
+---
+
+# 55. 이번 실습에서 실제로 확인한 상태
+
+Static Provisioning:
+
+```text
+PV 생성
+ ↓
+Available
+ ↓
+PVC 생성
+ ↓
+Bound
+```
+
+Retain:
+
+```text
+PV / PVC Bound
+ ↓
+PVC 삭제
+ ↓
+PV Released
+ ↓
+데이터 유지
+```
+
+Dynamic Provisioning:
+
+```text
+PVC 생성
+ ↓
+Pending
+ ↓
+WaitForFirstConsumer
+ ↓
+Pod 생성
+ ↓
+worker2 선택
+ ↓
+PV 자동 생성
+ ↓
+PVC Bound
+ ↓
+Pod Running
+```
+
+Delete:
+
+```text
+Dynamic PVC 삭제
+ ↓
+Dynamic PV 삭제
+ ↓
+Storage 정리
+```
+
+---
+
+# 56. 가장 중요한 전체 구조
+
+## Static Provisioning
+
+```text
+관리자
+ ↓
+PV 생성
+ ↓
+PVC
+ ↓
+Pod
+```
+
+정확한 사용 흐름:
+
+```text
+Pod
+ ↓
+PVC
+ ↓
+PV
+ ↓
+Storage
+```
+
+---
+
+## Dynamic Provisioning
+
+```text
+Pod
+ ↓
+PVC
+ ↓
+StorageClass
+ ↓
+Provisioner / CSI Driver
+ ↓
+PV 자동 생성
+ ↓
+Actual Storage
+```
+
+---
+
+# 57. 핵심 요약
+
+```text
+hostPath
+= Node 로컬 디렉터리를 Pod에 Mount
+```
+
+```text
+emptyDir
+= Pod 생명주기에 종속된 임시 Storage
+```
+
+```text
+PV
+= Kubernetes에 제공되는 Storage Resource
+```
+
+```text
+PVC
+= Storage 요청
+```
+
+```text
+Bound
+= PVC와 PV가 연결된 상태
+```
+
+```text
+Static Provisioning
+= PV를 관리자가 직접 생성
+```
+
+```text
+Dynamic Provisioning
+= PVC 요청을 기반으로 PV와 Storage 자동 생성
+```
+
+```text
+StorageClass
+= Storage 제공 정책
+```
+
+```text
+Provisioner / CSI Driver
+= 실제 Storage 시스템과 작업 수행
+```
+
+```text
+Retain
+= PVC 삭제 후 데이터 보존
+```
+
+```text
+Delete
+= PVC 삭제 후 PV/Storage 자동 정리 가능
+```
+
+```text
+WaitForFirstConsumer
+= PVC를 실제로 사용하는 Pod가 생길 때까지 Binding 대기
+```
+
+---
+
+# 58. Chapter 09 최종 체크리스트
+
+- [x] hostPath
+- [x] emptyDir
+- [x] Network Volume
+- [x] PV
+- [x] PVC
+- [x] PV/PVC Binding
+- [x] Bound
+- [x] Capacity
+- [x] AccessMode
+- [x] Pending PVC
+- [x] PV Lifecycle
+- [x] Available
+- [x] Bound
+- [x] Released
+- [x] ReclaimPolicy
+- [x] Retain
+- [x] Delete
+- [x] Static Provisioning
+- [x] StorageClass
+- [x] Local Path Provisioner
+- [x] Dynamic Provisioning
+- [x] WaitForFirstConsumer
+- [x] Dynamic PV 자동 생성
+- [x] PVC 삭제 시 Dynamic PV 삭제 확인
+- [x] 장애 대응 흐름
+- [x] AWS EBS / CSI 구조 이해
+
+---
+
+# Chapter 09 완료
+
+핵심 구조:
+
+```text
+Pod
+ ↓
+PVC
+ ↓
+PV
+ ↓
+Storage
+```
+
+실무형 Dynamic Provisioning:
+
+```text
+Pod
+ ↓
+PVC
+ ↓
+StorageClass
+ ↓
+CSI Driver / Provisioner
+ ↓
+PV
+ ↓
+Actual Storage
+```
+<img width="1225" height="1284" alt="image" src="https://github.com/user-attachments/assets/75cbc2e7-e836-4d1a-936e-07646b0adc86" />
+
+</details>
 
