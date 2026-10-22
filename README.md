@@ -833,4 +833,358 @@ Docker CLI → Docker Daemon → containerd → runc → 컨테이너 실행
 
     
 </details>
+<details>
+    
+    <summary>
+        <h2> Docker 01장 — 4교시: 종합 복습 및 평가</h2>
+    </summary>
 
+
+## 1. 핵심 개념 복습
+
+| 개념 | 핵심 설명 |
+|---|---|
+| VM | 게스트 OS와 독립적인 커널 실행 |
+| Docker Container | 호스트 Linux 커널 공유 |
+| Namespace | 프로세스가 볼 수 있는 시스템 환경 격리 |
+| cgroups | CPU·메모리 등 자원 사용 관리 및 제한 |
+| Docker Image | 컨테이너 생성에 사용하는 템플릿 |
+| Docker Container | 이미지를 기반으로 생성한 인스턴스 |
+| Docker CLI | 사용자 명령을 Docker Daemon에 전달 |
+| Docker Daemon | 이미지·컨테이너 관리 |
+| Registry | Docker 이미지 저장 및 공유 |
+
+**Docker 주요 장점**
+- 자원 효율성: 게스트 OS를 중복 실행하지 않음
+- 배포 일관성: 동일한 이미지로 실행 환경 표준화
+- 독립성: 애플리케이션별 실행 환경 분리
+- 확장성: 동일한 이미지로 컨테이너 추가 가능
+
+---
+
+## 2. 확인문제 (10문제)
+
+### 1번. VM과 Docker 컨테이너의 가장 중요한 구조적 차이는?
+
+① Docker는 CPU를 사용하지 않는다.  
+② VM은 게스트 OS와 커널을 실행하고, 컨테이너는 호스트 커널을 공유한다.  
+③ Docker 컨테이너는 항상 VM보다 보안이 강하다.  
+④ 가상 머신은 여러 애플리케이션을 실행할 수 없다.
+
+**정답: ②**
+
+해설: VM은 독립된 게스트 OS와 커널을 실행하지만, 일반적인 Linux 컨테이너는 호스트 커널을 공유한다.
+
+### 2번. Linux Namespace의 주요 역할은?
+
+① CPU 성능 향상  
+② 이미지 파일 압축  
+③ 프로세스가 볼 수 있는 시스템 환경 격리  
+④ 컨테이너 이미지 다운로드
+
+**정답: ③**
+
+해설: PID, Network, UTS 등의 Namespace를 통해 프로세스가 볼 수 있는 환경을 분리한다.
+
+### 3번. Linux cgroups의 역할은?
+
+① CPU·메모리 등의 자원 관리 및 제한  
+② 컨테이너별 호스트 이름 설정  
+③ Docker 이미지 업로드  
+④ Docker 버전 확인
+
+**정답: ①**
+
+해설: cgroups는 프로세스 그룹의 CPU, 메모리 등 자원 사용을 관리한다.
+
+### 4번. Docker 이미지와 컨테이너의 관계로 올바른 것은?
+
+① 이미지와 컨테이너는 같은 개념이다.  
+② 이미지는 반드시 실행 중이어야 한다.  
+③ 컨테이너 하나로는 이미지 한 개만 생성할 수 있다.  
+④ 이미지는 실행 템플릿이고 컨테이너는 이미지로 생성한 인스턴스이다.
+
+**정답: ④**
+
+해설: 하나의 이미지로 여러 컨테이너를 생성할 수 있다.
+
+### 5번. Docker를 사용하여 배포할 때 얻는 장점은?
+
+① 호스트 운영체제 커널까지 이미지에 포함된다.  
+② 같은 이미지로 애플리케이션 실행 환경의 일관성을 높일 수 있다.  
+③ 서버 장애가 발생해도 자동으로 다른 서버가 복구된다.  
+④ 운영 환경의 모든 네트워크 설정이 자동으로 동일해진다.
+
+**정답: ②**
+
+해설: 동일한 이미지를 재사용하면 애플리케이션 및 런타임 환경 차이를 줄일 수 있다.
+
+### 6번. Docker Daemon에 대한 설명으로 올바른 것은?
+
+① Docker 명령어만 표시하는 터미널이다.  
+② Ubuntu 운영체제의 Linux 커널이다.  
+③ 이미지·컨테이너 등의 관리 요청을 처리하는 서비스이다.  
+④ Docker Hub와 동일한 서비스이다.
+
+**정답: ③**
+
+해설: Docker Daemon(dockerd)은 Docker CLI 등에서 전달받은 요청을 처리한다.
+
+### 7번. hello-world 컨테이너의 상태가 Exited (0)으로 표시되었다. 의미는?
+
+① Docker Daemon이 비정상 종료되었다.  
+② 메모리 부족으로 강제 종료되었다.  
+③ 컨테이너 다운로드에 실패했다.  
+④ 컨테이너의 주 프로세스가 정상적으로 작업을 완료했다.
+
+**정답: ④**
+
+해설: 종료 코드 0은 주 프로세스가 정상 종료되었음을 의미한다.
+
+### 8번. Docker 컨테이너가 일반적으로 VM보다 빠르게 시작하는 이유는?
+
+**정답:**
+
+Docker 컨테이너는 호스트 Linux 커널을 공유하므로 VM처럼 별도의 게스트 OS를 부팅할 필요가 없다.
+
+따라서 일반적으로 시작 속도가 빠르고 자원 사용이 효율적이다.
+
+### 9번. Spring Boot를 서버 5대에 배포할 때 Docker의 장점은?
+
+**정답:**
+
+Spring Boot 애플리케이션과 Java 런타임 등 실행에 필요한 환경을 이미지로 만들고, 여러 서버에서 동일한 이미지를 사용할 수 있다.
+
+이를 통해 환경 차이를 줄이고 배포를 표준화할 수 있다.
+
+### 10번. Namespace와 cgroups의 차이는?
+
+**정답:**
+
+- Namespace: PID, 네트워크, 호스트 이름 등 프로세스가 볼 수 있는 시스템 환경을 격리한다.
+- cgroups: CPU, 메모리 등의 자원 사용을 관리하고 제한한다.
+
+**핵심: Namespace는 격리, cgroups는 자원 관리**
+
+### 확인문제 결과
+
+- 객관식: 7/7 정답
+- 서술형: 3/3 핵심 개념 정답
+- 최종: 10/10 정답
+
+---
+
+## 3. 실습문제 및 정답
+
+### 실습 1. Docker 환경 점검
+
+**문제**
+1. Docker 서비스 상태 확인
+2. Docker Client와 Server 버전 확인
+3. 실행 중인 컨테이너 조회
+4. 종료된 컨테이너까지 전체 조회
+
+**정답**
+
+```bash
+sudo systemctl status docker --no-pager
+sudo docker version
+sudo docker ps
+sudo docker ps -a
+```
+
+**실습 결과**
+- Docker Engine: 29.9.2
+- Docker 서비스: active (running)
+- 컨테이너 조회 정상
+- Docker Client / Server 통신 정상
+
+### 실습 2. 컨테이너 실행 및 종료 상태 확인
+
+**문제**
+1. hello-world 컨테이너 실행
+2. 실행 중인 컨테이너 조회
+3. 종료된 컨테이너 확인
+4. Exited (0)의 의미 설명
+
+**정답**
+
+```bash
+sudo docker run hello-world
+sudo docker ps
+sudo docker ps -a
+```
+
+**결과 및 해설**
+- hello-world는 메시지를 출력하고 종료한다.
+- `docker ps`는 실행 중인 컨테이너만 표시한다.
+- `docker ps -a`는 종료된 컨테이너까지 표시한다.
+- `Exited (0)`은 주 프로세스의 정상 종료를 의미한다.
+
+### 실습 3. Namespace와 Linux 커널 확인
+
+**문제**
+
+호스트와 컨테이너의 hostname, 커널 버전을 비교하고 차이가 발생하는 이유를 설명한다.
+
+**정답**
+
+```bash
+# Ubuntu 호스트 확인
+hostname
+uname -r
+
+# Alpine 컨테이너 확인
+sudo docker run --rm alpine:latest sh -c 'hostname; uname -r'
+```
+
+**실제 결과**
+
+| 항목 | Ubuntu 호스트 | Alpine 컨테이너 |
+|---|---|---|
+| hostname | docker | bedeead39e7a |
+| 커널 | 6.8.0-31-generic | 6.8.0-31-generic |
+
+**해설**
+
+Q. 호스트 이름이 다른 이유는?
+
+A. Docker가 기본적으로 UTS Namespace를 분리하고 컨테이너마다 별도의 호스트 이름을 설정하기 때문이다.
+
+Q. 커널 버전이 같은 이유는?
+
+A. 컨테이너가 Ubuntu 호스트의 Linux 커널을 공유하기 때문이다.
+
+※ `--rm`: 컨테이너 종료 시 자동 삭제
+
+---
+
+## 4. 장애 대응 문제 및 정답
+
+### 장애 1. Docker Daemon 연결 실패
+
+**문제**
+
+```text
+Cannot connect to the Docker daemon
+at unix:///var/run/docker.sock
+```
+
+**정답**
+
+```bash
+# 1. 서비스 상태 확인
+sudo systemctl status docker
+
+# 2. 중지되어 있다면 시작
+sudo systemctl start docker
+
+# 3. 재검증
+sudo docker ps
+```
+
+서비스가 실행 중이라면 소켓 권한, 연결 설정, Daemon 로그 등을 추가 확인한다.
+
+### 장애 2. hello-world 컨테이너가 보이지 않음
+
+**문제**
+
+`docker ps` 실행 시 hello-world가 보이지 않는다.
+
+**정답**
+
+```bash
+sudo docker ps -a
+```
+
+hello-world는 실행 후 정상 종료되므로 실행 중인 컨테이너 목록에 나타나지 않는다.
+
+### 장애 3. Docker 이미지 다운로드 실패
+
+**문제**
+
+```text
+lookup registry-1.docker.io:
+no such host
+```
+
+**정답**
+
+우선 DNS 이름 해석 문제를 의심한다.
+
+```bash
+# 1. 라우팅 확인
+ip route
+
+# 2. IP 연결 점검
+ping -c 4 8.8.8.8
+
+# 3. DNS 조회 확인
+getent hosts registry-1.docker.io
+
+# 4. DNS 설정 확인
+resolvectl status
+
+# 5. 조치 후 이미지 다운로드 재검증
+sudo docker pull hello-world
+```
+
+**핵심**
+
+`no such host`는 DNS 조회 실패를 의심할 수 있는 메시지다. 네트워크 연결과 DNS 설정을 점검한다.
+
+※ ping 실패만으로 인터넷 연결 장애를 단정하지 않는다.
+
+---
+
+## 5. 실무 면접 질문 및 모범답변
+
+### Q1. VM으로도 WEB/WAS/DB를 구축할 수 있는데 왜 Docker를 사용하나요?
+
+Docker는 호스트 Linux 커널을 공유하기 때문에 일반적으로 VM보다 자원 사용이 효율적이다.
+
+또한 애플리케이션과 실행 환경을 이미지로 패키징하여 여러 서버에 일관되게 배포할 수 있어 운영과 확장이 편리하다.
+
+### Q2. Docker 컨테이너는 커널을 공유하는데 어떻게 격리하나요?
+
+Docker는 Linux Namespace를 이용해 프로세스 ID, 네트워크, 호스트 이름 등의 환경을 격리한다.
+
+또한 cgroups를 이용해 CPU와 메모리 등의 자원 사용을 관리하고 제한한다.
+
+### Q3. 한 서버에서 Spring Boot 컨테이너 3개를 실행하면 서버 장애 시에도 서비스가 유지되나요?
+
+아니다.
+
+하나의 호스트 서버가 중단되면 그 서버에서 실행되는 컨테이너 3개도 영향을 받는다.
+
+고가용성을 위해서는 여러 서버에 컨테이너를 분산 배치하고, 로드밸런서와 헬스체크 등을 통해 장애 발생 시 정상 서버로 요청을 전달하도록 구성해야 한다.
+
+---
+
+## 6. 최종 핵심 요약
+
+1. Docker 컨테이너는 호스트 Linux 커널을 공유한다.
+2. Namespace는 격리, cgroups는 자원 관리를 담당한다.
+3. Docker 이미지는 실행 환경을 패키징한 템플릿이다.
+4. Docker는 동일한 이미지로 배포 일관성을 높일 수 있다.
+5. Docker CLI는 명령 전달, Daemon은 컨테이너 관리를 담당한다.
+6. `docker ps -a`로 종료된 컨테이너까지 확인한다.
+7. 장애 대응은 증상 → 원인 가설 → 확인 → 조치 → 검증 순서로 진행한다.
+8. 하나의 서버에서 여러 컨테이너를 실행하는 것만으로 고가용성이 보장되지는 않는다.
+
+---
+
+## 학습 완료 현황
+
+- [x] 01장 핵심 이론 복습
+- [x] 확인문제 10문제
+- [x] 실습문제 3문제
+- [x] 장애 대응 3문제 풀이 및 해설
+- [x] 면접 질문 3문제 및 보충 학습
+
+**Docker 01장 학습 완료**
+
+다음 학습: **02장 도커 엔진 — 1교시: Docker 이미지와 컨테이너**
+<img width="1312" height="1199" alt="image" src="https://github.com/user-attachments/assets/e657de43-9781-40b6-b109-1d14e5477e7f" />
+
+</details>
