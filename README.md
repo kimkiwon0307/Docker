@@ -275,11 +275,9 @@ Namespace는 프로세스가 볼 수 있는 시스템 자원을 격리하는 기
 ---
 
 
-</details>
-
-<summary>
-    <h2>
-         2교시 — 1.2 도커를 시작해야 하는 이유
+</details> 
+<details>
+<summary><h2>2교시 — 1.2 도커를 시작해야 하는 이유
     </h2>
    
 </summary>
