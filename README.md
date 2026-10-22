@@ -275,7 +275,7 @@ Namespace는 프로세스가 볼 수 있는 시스템 자원을 격리하는 기
 ---
 
 
-</detils>
+</details>
 
 <summary>
     <h2>
