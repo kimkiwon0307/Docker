@@ -833,11 +833,10 @@ Docker CLI → Docker Daemon → containerd → runc → 컨테이너 실행
 
     
 </details>
+
 <details>
-    
     <summary>
-        <h2> Docker 01장 — 4교시: 종합 복습 및 평가</h2>
-    </summary>
+        <h2> Docker 01장 — 4교시: 종합 복습 및 평가</h2></summary>
 
 
 ## 1. 핵심 개념 복습
