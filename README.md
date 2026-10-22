@@ -2,7 +2,7 @@
 # Docker 학습 정리
 
 <details> 
-<summary><h2>01장. 도커란?</h2></summary>
+<summary><h2>Docker 01장 — 1교시:도커란?</h2></summary>
 
 ### 1교시 — 1.1 가상 머신과 도커 컨테이너
 
@@ -277,7 +277,7 @@ Namespace는 프로세스가 볼 수 있는 시스템 자원을 격리하는 기
 
 </details> 
 <details>
-<summary><h2>2교시 — 1.2 도커를 시작해야 하는 이유
+<summary><h2>Docker 01장 — 2교시: 도커를 시작해야 하는 이유
     </h2>
    
 </summary>
@@ -642,5 +642,195 @@ Docker는 컨테이너 이미지 빌드와 실행·관리에 활용하는 기술
 
 **다음 학습:** 01장 / 3교시 — 1.3 Docker Engine 설치 및 실습
 
+</details>
+
+<details>
+    <summary>
+        <h2>
+            Docker 01장 — 3교시: Docker Engine 설치
+        </h2>
+    </summary>
+
+
+## 1. Docker Engine 개념
+
+Docker Engine은 이미지와 컨테이너를 생성·실행·관리하는 핵심 소프트웨어이다.
+
+### 주요 구성요소
+
+| 구성요소 | 역할 |
+|---|---|
+| Docker CLI | 사용자가 Docker 명령어 입력 |
+| Docker Daemon (dockerd) | 이미지·컨테이너 관리 |
+| containerd | 컨테이너 생명주기 관리 |
+| runc | Linux 컨테이너 생성·실행 |
+
+**동작 구조**
+
+Docker CLI → Docker Daemon → containerd → runc → Linux 커널
+
+- **Docker Engine:** Linux 서버에서 Docker를 실행하는 핵심 소프트웨어
+- **Docker Desktop:** Windows·macOS 등에서 GUI와 개발 도구를 제공하는 제품
+- **Docker Compose:** 여러 컨테이너를 하나의 설정으로 관리하는 도구
+
+---
+
+## 2. Docker Engine 설치
+
+**실습 환경:** VMware / Ubuntu 24.04 LTS / Docker Engine 29.9.2
+
+### ① 필수 패키지 설치
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl
+```
+
+### ② Docker 공식 GPG 키 등록
+
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+
+sudo curl -fsSL \
+  https://download.docker.com/linux/ubuntu/gpg \
+  -o /etc/apt/keyrings/docker.asc
+
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
+
+공식 저장소에서 제공하는 패키지의 서명을 검증하기 위한 키를 등록한다.
+
+### ③ Docker 공식 저장소 등록
+
+```bash
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+```
+
+### ④ Docker 설치
+
+```bash
+sudo apt update
+
+sudo apt install -y \
+  docker-ce \
+  docker-ce-cli \
+  containerd.io \
+  docker-buildx-plugin \
+  docker-compose-plugin
+```
+
+---
+
+## 3. Docker 설치 및 동작 검증
+
+```bash
+# Docker 서비스 상태 확인
+sudo systemctl status docker --no-pager
+
+# Docker 서비스 자동 시작 설정
+sudo systemctl enable docker
+
+# Docker Client / Server 버전 확인
+sudo docker version
+
+# Docker Compose 버전 확인
+docker compose version
+
+# 테스트 컨테이너 실행
+sudo docker run hello-world
+
+# 종료된 컨테이너까지 확인
+sudo docker ps -a
+```
+
+### 실제 실습 결과
+
+| 확인 항목 | 결과 |
+|---|---|
+| Docker Engine | 29.9.2 |
+| Docker Compose | 5.6.1 |
+| Docker 서비스 | active (running) |
+| hello-world | 실행 성공 |
+| 컨테이너 상태 | Exited (0) |
+
+**Exited (0)은 컨테이너가 작업을 정상적으로 마치고 종료되었다는 의미이다.**
+
+---
+
+## 4. 주요 장애 대응
+
+| 증상 | 확인 및 대응 |
+|---|---|
+| Docker 명령어 없음 | 패키지 설치 여부 확인 |
+| Docker Daemon 연결 실패 | `systemctl status docker` |
+| permission denied | `sudo docker`로 권한 확인 |
+| 이미지 다운로드 실패 | 네트워크·DNS 확인 |
+| 디스크 공간 부족 | `df -h`, `lsblk`, `vgs` 확인 |
+
+Docker 그룹에 사용자를 추가하면 Docker 소켓을 사용할 수 있지만, 사실상 root 수준의 권한을 부여할 수 있으므로 주의해야 한다.
+
+---
+
+## 5. 추가 운영 실습 — LVM 확인
+
+```bash
+lsblk
+df -h /
+sudo vgs
+```
+
+실습 환경에서는 30GB 가상 디스크 중 루트 LV에 14GB만 할당되어 있고, VG에 14GB의 여유 공간이 있음을 확인했다.
+
+파일시스템 종류를 확인하고 스냅샷을 생성한 후, 필요하면 다음 명령으로 확장한다.
+
+```bash
+sudo lvextend -r -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+```
+
+※ LVM 확장은 선택 보충 실습이며, 실제 확장 여부는 별도 검증이 필요하다.
+
+---
+
+## 6. 면접 핵심 질문
+
+**Q1. Docker CLI와 Docker Daemon의 차이는?**
+
+- CLI는 사용자의 명령을 전달한다.
+- Daemon은 요청을 처리하고 이미지와 컨테이너를 관리한다.
+
+**Q2. Docker Engine과 Docker Desktop의 차이는?**
+
+- Engine은 컨테이너 실행·관리의 핵심 소프트웨어다.
+- Desktop은 개발 PC에서 Docker를 편리하게 사용하도록 제공하는 제품이다.
+
+**Q3. Docker 컨테이너가 실행되는 과정은?**
+
+Docker CLI → Docker Daemon → containerd → runc → 컨테이너 실행
+
+**Q4. hello-world 컨테이너가 Exited (0)인 이유는?**
+
+메시지를 출력하는 작업을 정상적으로 완료하고 주 프로세스가 종료되었기 때문이다.
+
+---
+
+## 7. 핵심 요약
+
+1. Docker Engine은 Docker CLI, Daemon 및 컨테이너 런타임 구성요소를 통해 컨테이너를 관리한다.
+2. Ubuntu에서는 Docker 공식 APT 저장소를 이용해 설치할 수 있다.
+3. `systemctl`로 Docker 서비스 상태와 자동 시작 설정을 확인한다.
+4. `docker version`으로 Client와 Server 연결을 확인한다.
+5. `docker run hello-world`로 실제 컨테이너 실행을 검증한다.
+
+**학습 진도:** 01장 3교시 완료  
+**다음 학습:** 01장 4교시 — 전체 복습·확인문제·장애 대응·면접
+
     
 </details>
+
