@@ -1,4 +1,4 @@
-<img width="1055" height="1491" alt="image" src="https://github.com/user-attachments/assets/cf719e71-80a4-4ee4-941b-278aceaa2fa3" />
+
 # 2장 1교시 — Docker Engine 설치 및 Docker Daemon 운영
 
 ## 1. Docker Engine이란?
